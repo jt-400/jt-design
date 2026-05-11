@@ -693,6 +693,98 @@ test('daemon error details persist between failed sends', async ({ page }) => {
   await expect(page.getByText('second failing prompt')).toBeVisible();
 });
 
+test('a successful retry after a failed send restores the workspace to a fresh artifact preview', async ({ page }) => {
+  const entry = automatedUiScenarios().find((scenario) => scenario.id === 'prototype-basic');
+  if (!entry) throw new Error('prototype-basic scenario missing');
+
+  await page.route('**/api/agents', async (route) => {
+    await route.fulfill({
+      json: {
+        agents: [
+          {
+            id: 'mock',
+            name: 'Mock Agent',
+            bin: 'mock-agent',
+            available: true,
+            version: 'test',
+            models: [{ id: 'default', label: 'Default' }],
+          },
+        ],
+      },
+    });
+  });
+
+  let runCount = 0;
+  await page.route('**/api/runs', async (route) => {
+    runCount += 1;
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ runId: `retry-run-${runCount}` }),
+    });
+  });
+
+  let eventCount = 0;
+  await page.route('**/api/runs/*/events', async (route) => {
+    eventCount += 1;
+    const body =
+      eventCount === 1
+        ? [
+            'event: start',
+            'data: {"bin":"mock-agent"}',
+            '',
+            'event: error',
+            'data: {"message":"connection refused"}',
+            '',
+            '',
+          ].join('\n')
+        : [
+            'event: start',
+            'data: {"bin":"mock-agent"}',
+            '',
+            'event: stdout',
+            `data: ${JSON.stringify({
+              chunk:
+                '<artifact identifier="retry-success-artifact" type="text/html" title="Retry Success Artifact"><!doctype html><html><body><main><h1>Retry Success Artifact</h1></main></body></html></artifact>',
+            })}`,
+            '',
+            'event: end',
+            'data: {"code":0,"status":"succeeded"}',
+            '',
+            '',
+          ].join('\n');
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+      },
+      body,
+    });
+  });
+
+  await page.goto('/');
+  await createProject(page, entry);
+  await expectWorkspaceReady(page);
+
+  await sendPrompt(page, 'first failing prompt');
+  await expect(page.locator('.msg.error')).toContainText('connection refused');
+  await expect(page.locator('.status-pill', { hasText: 'connection refused' })).toHaveCount(1);
+
+  await sendPrompt(page, 'retry prompt that succeeds');
+  await expect(page.getByText('retry-success-artifact.html', { exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /retry-success-artifact\.html/i })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByTestId('artifact-preview-frame')).toBeVisible();
+  await expect(
+    page.frameLocator('[data-testid="artifact-preview-frame"]').getByRole('heading', { name: 'Retry Success Artifact' }),
+  ).toBeVisible();
+  await expect(page.getByText('retry prompt that succeeds')).toBeVisible();
+});
+
 test('manual edit mode applies content, style, attribute, HTML, source, undo, and redo patches', async ({ page }) => {
   await routeMockAgents(page);
   const projectId = await createEmptyProject(page, 'Manual edit smoke');
