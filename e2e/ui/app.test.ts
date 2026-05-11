@@ -504,6 +504,421 @@ test('switching between projects restores each project workspace to its last act
   await expect(page.getByRole('tab', { name: /beta-secondary\.png/i })).toHaveAttribute('aria-selected', 'false');
 });
 
+test('visiting an uploaded design file route restores its tab and preview surface', async ({ page }) => {
+  await page.route('**/api/agents', async (route) => {
+    await route.fulfill({
+      json: {
+        agents: [
+          {
+            id: 'mock',
+            name: 'Mock Agent',
+            bin: 'mock-agent',
+            available: true,
+            version: 'test',
+            models: [{ id: 'default', label: 'Default' }],
+          },
+        ],
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('new-project-name').fill('Uploaded file deep link');
+  await page.getByTestId('create-project').click();
+  await expectWorkspaceReady(page);
+
+  await page.getByTestId('design-files-upload-input').setInputFiles({
+    name: 'deep-linked-reference.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5W6McAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  const fileTab = page.getByRole('tab', { name: /deep-linked-reference\.png/i });
+  await expect(fileTab).toBeVisible();
+
+  await page.getByTestId('design-files-tab').click();
+  const fileRow = page.locator('[data-testid^="design-file-row-"]', {
+    hasText: 'deep-linked-reference.png',
+  });
+  await expect(fileRow).toBeVisible();
+  await fileRow.getByRole('button').first().click();
+  await expect(page.getByTestId('design-file-preview')).toBeVisible();
+  await expect(page.getByTestId('design-file-preview').getByText(/deep-linked-reference\.png/i)).toBeVisible();
+
+  const current = new URL(page.url());
+  const [, projects, projectId] = current.pathname.split('/');
+  if (projects !== 'projects' || !projectId) {
+    throw new Error(`unexpected project route: ${current.pathname}`);
+  }
+
+  await page.goto(`/projects/${projectId}/files/deep-linked-reference.png`);
+
+  await expect(page.getByTestId('file-workspace')).toBeVisible();
+  await expect(fileTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('design-file-preview')).toBeVisible();
+  await expect(page.getByTestId('design-file-preview').getByText(/deep-linked-reference\.png/i)).toBeVisible();
+  await expect(page.getByTestId('design-files-tab')).toHaveAttribute('aria-selected', 'false');
+});
+
+test('returning from an artifact file route to the project root keeps the artifact tab and preview active', async ({ page }) => {
+  await page.route('**/api/agents', async (route) => {
+    await route.fulfill({
+      json: {
+        agents: [
+          {
+            id: 'mock',
+            name: 'Mock Agent',
+            bin: 'mock-agent',
+            available: true,
+            version: 'test',
+            models: [{ id: 'default', label: 'Default' }],
+          },
+        ],
+      },
+    });
+  });
+
+  await page.route('**/api/runs', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: '{"runId":"artifact-root-run"}',
+    });
+  });
+
+  await page.route('**/api/runs/*/events', async (route) => {
+    const artifact =
+      '<artifact identifier="root-restored-artifact" type="text/html" title="Root Restored Artifact">' +
+      '<!doctype html><html><body><main><h1>Root Restored Artifact</h1></main></body></html>' +
+      '</artifact>';
+    const body = [
+      'event: start',
+      'data: {"bin":"mock-agent"}',
+      '',
+      'event: stdout',
+      `data: ${JSON.stringify({ chunk: artifact })}`,
+      '',
+      'event: end',
+      'data: {"code":0,"status":"succeeded"}',
+      '',
+      '',
+    ].join('\n');
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+      },
+      body,
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('new-project-name').fill('Artifact root route restore');
+  await page.getByTestId('create-project').click();
+  await expectWorkspaceReady(page);
+
+  await sendPrompt(page, 'Create the artifact that should survive a root-route hop');
+  const artifactTab = page.getByRole('tab', { name: /root-restored-artifact\.html/i });
+  await expect(artifactTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('artifact-preview-frame')).toBeVisible();
+  await expect(
+    page.frameLocator('[data-testid="artifact-preview-frame"]').getByRole('heading', {
+      name: 'Root Restored Artifact',
+    }),
+  ).toBeVisible();
+
+  const current = new URL(page.url());
+  const [, projects, projectId] = current.pathname.split('/');
+  if (projects !== 'projects' || !projectId) {
+    throw new Error(`unexpected project route: ${current.pathname}`);
+  }
+
+  await page.goto(`/projects/${projectId}`);
+
+  await expect(page.getByTestId('file-workspace')).toBeVisible();
+  await expect(artifactTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('artifact-preview-frame')).toBeVisible();
+  await expect(
+    page.frameLocator('[data-testid="artifact-preview-frame"]').getByRole('heading', {
+      name: 'Root Restored Artifact',
+    }),
+  ).toBeVisible();
+});
+
+test('returning from an older conversation route to the project root keeps that conversation active', async ({ page }) => {
+  await page.route('**/api/agents', async (route) => {
+    await route.fulfill({
+      json: {
+        agents: [
+          {
+            id: 'mock',
+            name: 'Mock Agent',
+            bin: 'mock-agent',
+            available: true,
+            version: 'test',
+            models: [{ id: 'default', label: 'Default' }],
+          },
+        ],
+      },
+    });
+  });
+
+  await page.route('**/api/runs', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: '{"runId":"conversation-root-run"}',
+    });
+  });
+
+  await page.route('**/api/runs/*/events', async (route) => {
+    const body = [
+      'event: start',
+      'data: {"bin":"mock-agent"}',
+      '',
+      'event: end',
+      'data: {"code":0,"status":"succeeded"}',
+      '',
+      '',
+    ].join('\n');
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+      },
+      body,
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('new-project-name').fill('Conversation root route restore');
+  await page.getByTestId('create-project').click();
+  await expectWorkspaceReady(page);
+
+  const firstPrompt = 'First conversation should stay selected';
+  await sendPrompt(page, firstPrompt);
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  const firstContext = await getCurrentProjectContext(page);
+
+  await page.getByTestId('new-conversation').click();
+  await expect(page.getByText('Start a conversation')).toBeVisible();
+
+  const secondPrompt = 'Second conversation should not replace the deep-linked one';
+  await sendPrompt(page, secondPrompt);
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt }).first()).toBeVisible();
+  const secondContext = await getCurrentProjectContext(page);
+  expect(secondContext.conversationId).not.toBe(firstContext.conversationId);
+
+  await page.goto(`/projects/${firstContext.projectId}/conversations/${firstContext.conversationId}`);
+  await expect(page.getByTestId('chat-composer')).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt })).toHaveCount(0);
+
+  await page.goto(`/projects/${firstContext.projectId}`);
+  await expect(page.getByTestId('chat-composer')).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt })).toHaveCount(0);
+});
+
+test('switching between conversations restores each conversation draft in the composer', async ({ page }) => {
+  await page.route('**/api/agents', async (route) => {
+    await route.fulfill({
+      json: {
+        agents: [
+          {
+            id: 'mock',
+            name: 'Mock Agent',
+            bin: 'mock-agent',
+            available: true,
+            version: 'test',
+            models: [{ id: 'default', label: 'Default' }],
+          },
+        ],
+      },
+    });
+  });
+
+  await page.route('**/api/runs', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: '{"runId":"conversation-draft-run"}',
+    });
+  });
+
+  await page.route('**/api/runs/*/events', async (route) => {
+    const body = [
+      'event: start',
+      'data: {"bin":"mock-agent"}',
+      '',
+      'event: end',
+      'data: {"code":0,"status":"succeeded"}',
+      '',
+      '',
+    ].join('\n');
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+      },
+      body,
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('new-project-name').fill('Conversation draft restore');
+  await page.getByTestId('create-project').click();
+  await expectWorkspaceReady(page);
+
+  const firstPrompt = 'First conversation anchor';
+  const secondPrompt = 'Second conversation anchor';
+  const firstDraft = 'First conversation unsent draft';
+  const secondDraft = 'Second conversation unsent draft';
+
+  await sendPrompt(page, firstPrompt);
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+
+  await page.getByTestId('new-conversation').click();
+  await expect(page.getByText('Start a conversation')).toBeVisible();
+  await sendPrompt(page, secondPrompt);
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt }).first()).toBeVisible();
+
+  const composerInput = page.getByTestId('chat-composer-input');
+  await composerInput.fill(secondDraft);
+  await expect(composerInput).toHaveValue(secondDraft);
+
+  await page.getByTestId('conversation-history-trigger').click();
+  const historyList = page.getByTestId('conversation-list');
+  await expect(historyList).toBeVisible();
+  await historyList
+    .locator('.chat-conv-item')
+    .filter({ hasText: firstPrompt })
+    .first()
+    .locator('[data-testid^="conversation-select-"]')
+    .click();
+
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt })).toHaveCount(0);
+  await expect(composerInput).toHaveValue('');
+
+  await composerInput.fill(firstDraft);
+  await expect(composerInput).toHaveValue(firstDraft);
+
+  await page.getByTestId('conversation-history-trigger').click();
+  await expect(historyList).toBeVisible();
+  await historyList
+    .locator('.chat-conv-item')
+    .filter({ hasText: secondPrompt })
+    .first()
+    .locator('[data-testid^="conversation-select-"]')
+    .click();
+
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt })).toHaveCount(0);
+  await expect(composerInput).toHaveValue(secondDraft);
+
+  await page.getByTestId('conversation-history-trigger').click();
+  await expect(historyList).toBeVisible();
+  await historyList
+    .locator('.chat-conv-item')
+    .filter({ hasText: firstPrompt })
+    .first()
+    .locator('[data-testid^="conversation-select-"]')
+    .click();
+
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt })).toHaveCount(0);
+  await expect(composerInput).toHaveValue(firstDraft);
+});
+
+test('reloading an older conversation route restores its unsent composer draft', async ({ page }) => {
+  await page.route('**/api/agents', async (route) => {
+    await route.fulfill({
+      json: {
+        agents: [
+          {
+            id: 'mock',
+            name: 'Mock Agent',
+            bin: 'mock-agent',
+            available: true,
+            version: 'test',
+            models: [{ id: 'default', label: 'Default' }],
+          },
+        ],
+      },
+    });
+  });
+
+  await page.route('**/api/runs', async (route) => {
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: '{"runId":"conversation-reload-draft-run"}',
+    });
+  });
+
+  await page.route('**/api/runs/*/events', async (route) => {
+    const body = [
+      'event: start',
+      'data: {"bin":"mock-agent"}',
+      '',
+      'event: end',
+      'data: {"code":0,"status":"succeeded"}',
+      '',
+      '',
+    ].join('\n');
+
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+      },
+      body,
+    });
+  });
+
+  await page.goto('/');
+  await page.getByTestId('new-project-name').fill('Conversation reload draft restore');
+  await page.getByTestId('create-project').click();
+  await expectWorkspaceReady(page);
+
+  const firstPrompt = 'Reloaded conversation anchor';
+  const secondPrompt = 'Latest conversation anchor';
+  const restoredDraft = 'Draft that should survive a reload on the older conversation';
+
+  await sendPrompt(page, firstPrompt);
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  const firstContext = await getCurrentProjectContext(page);
+
+  await page.getByTestId('new-conversation').click();
+  await expect(page.getByText('Start a conversation')).toBeVisible();
+  await sendPrompt(page, secondPrompt);
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt }).first()).toBeVisible();
+
+  await page.goto(`/projects/${firstContext.projectId}/conversations/${firstContext.conversationId}`);
+  const composerInput = page.getByTestId('chat-composer-input');
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt })).toHaveCount(0);
+
+  await composerInput.fill(restoredDraft);
+  await expect(composerInput).toHaveValue(restoredDraft);
+
+  await page.reload();
+  await expect(page.getByTestId('chat-composer')).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: firstPrompt }).first()).toBeVisible();
+  await expect(page.locator('.msg.user .user-text').filter({ hasText: secondPrompt })).toHaveCount(0);
+  await expect(composerInput).toHaveValue(restoredDraft);
+});
+
 test('a later completed run updates the workspace to the newest artifact tab and preview', async ({ page }) => {
   await page.route('**/api/agents', async (route) => {
     await route.fulfill({
