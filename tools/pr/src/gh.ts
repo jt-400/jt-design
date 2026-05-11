@@ -193,6 +193,29 @@ async function fetchPaginatedPrList<N>(nodeFields: string): Promise<N[]> {
  * the other heavy chunks (reviews, comments, assignment timelines).
  */
 
+/**
+ * Per-PR merge/diff stats — `additions`, `mergeStateStatus`, etc. `gh pr
+ * list --json mergeStateStatus,...` 502s once the requested page is
+ * above ~60 because the gateway has to recompute merge state for every
+ * PR up front. Cursor-paginated GraphQL at PR_LIST_PAGE_SIZE keeps each
+ * round trip well within the budget and consistent with how the other
+ * heavy chunks (reviews, comments, commits, assignment timelines) are
+ * fetched.
+ */
+async function fetchOpenPrStats(): Promise<GhStats[]> {
+  return fetchPaginatedPrList<GhStats>(
+    `number
+     additions
+     deletions
+     changedFiles
+     headRefName
+     headRefOid
+     baseRefName
+     mergeable
+     mergeStateStatus`,
+  );
+}
+
 async function fetchOpenPrReviews(): Promise<GhReviewsLite[]> {
   type Node = {
     number: number;
@@ -424,11 +447,7 @@ export async function fetchOpenPrs(
     "--json",
     "number,title,author,createdAt,updatedAt,isDraft,reviewDecision,labels,maintainerCanModify,assignees",
   ]);
-  const statsPromise = gh<GhStats[]>([
-    ...baseArgs,
-    "--json",
-    "number,additions,deletions,changedFiles,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus",
-  ]);
+  const statsPromise = fetchOpenPrStats();
   const filesPromise = gh<GhFiles[]>([...baseArgs, "--json", "number,files"]);
   const reviewsPromise = fetchOpenPrReviews();
   const commitsPromise = options.includeCommits
