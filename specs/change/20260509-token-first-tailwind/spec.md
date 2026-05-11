@@ -19,7 +19,7 @@ created: '2026-05-09'
 - Migrate component styles in existing TSX that depend on global CSS classes to token-first Tailwind `className` values, reducing day-to-day dependency on `index.css` edits.
 - Reduce conflict probability from the global CSS hotspot file during multi-contributor work.
 - Keep the existing page style, light/dark themes, warm paper-like tone, and overall presentation stable.
-- Establish repeatable agent visual comparison validation: each development worktree and baseline worktree starts its own web/daemon pair, and an agent equipped with the agent-browser CLI and Chrome DevTools MCP compares frontend presentation across the two services to confirm visual consistency and prevent display drift before and after the refactor.
+- Establish repeatable agent visual comparison validation: each development worktree and baseline worktree starts its own web/daemon pair, and an agent equipped with the agent-browser CLI and Chrome DevTools MCP compares frontend presentation across the two services. The comparison uses screenshots as the primary evidence and component source inspection as supporting context to confirm visual consistency and prevent display drift before and after the refactor.
 
 ### Scope
 
@@ -42,7 +42,7 @@ created: '2026-05-09'
 - TSX migration target: migratable component-level global classes are completed by PR slice, and each slice records complete migrated / retained / deferred class lists; after the final slice, normal component UI changes primarily use TSX Tailwind utilities.
 - `index.css` retention target: by the end, it only retains tokens, base, keyframes, loading shell, content-level/third-party boundary styles, and explicitly documented retained global styles; component-level retained global classes need an itemized reason and follow-up point.
 - Guard target: default Tailwind palette utilities and unregistered hardcoded app UI colors fail in `pnpm guard`; each allowlist entry includes file scope, pattern scope, and reason.
-- Visual consistency acceptance target: each development worktree and baseline worktree starts an independent web/daemon service pair. The agent uses agent-browser CLI and Chrome DevTools MCP to compare the same pages, same viewport, same theme/accent state, and same fixture data across the two services. Coverage includes Dashboard/app shell, project detail, settings dialog, file viewer/inspect overlay, sketch editor, live artifact card, and modal/popover/control states under light, dark, system, and custom accent. The refactor is accepted when visual effects are consistent and frontend presentation does not drift; any layout offset, token color drift, radius/shadow difference, or theme-state difference must be fixed or recorded as an approved deviation.
+- Visual consistency acceptance target: each development worktree and baseline worktree starts an independent web/daemon service pair. The agent uses agent-browser CLI and Chrome DevTools MCP to compare the same pages, same viewport, same theme/accent state, and same fixture data across the two services. Screenshot comparison is the primary validation artifact; component source inspection is used as supporting evidence when screenshots expose a difference or when a migrated class needs traceability to its token-first Tailwind replacement. Coverage includes Dashboard/app shell, project detail, settings dialog, file viewer/inspect overlay, sketch editor, live artifact card, and modal/popover/control states under light, dark, system, and custom accent. The refactor is accepted when visual effects are consistent and frontend presentation does not drift; any layout offset, token color drift, radius/shadow difference, or theme-state difference must be fixed or recorded as an approved deviation.
 
 ## Research
 
@@ -69,7 +69,7 @@ created: '2026-05-09'
 - Tailwind CSS v3 primarily configures theme colors through `tailwind.config.js` / `theme.colors`; the v4 official docs move theme values to CSS theme variables. Source: `https://v3.tailwindcss.com/docs/theme`; `https://tailwindcss.com/docs/upgrade-guide`
 - The existing repository `guard` mechanism already aggregates checks in a TypeScript script and sets a non-zero exit code on failure, so it can be extended as the token/Tailwind constraint entrypoint. Source: `scripts/guard.ts:6-9,401-422`
 - Web tests live under `apps/web/tests/`. Existing Vitest coverage for components, runtime, state, and providers is a fit for lightweight tests around new helper functions and style constraints. Source: `apps/AGENTS.md:19-24`; `apps/web/package.json:23-29`
-- Visual consistency validation can be performed by an agent with browser automation capability comparing two local service pairs: a baseline worktree running pre-migration code and a development worktree running the current slice. The agent checks display consistency under the same scenario, viewport, theme/accent, and fixture data. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
+- Visual consistency validation can be performed by an agent with browser automation capability comparing two local service pairs: a baseline worktree running pre-migration code and a development worktree running the current slice. The agent checks display consistency under the same scenario, viewport, theme/accent, and fixture data, using screenshot comparison as the main evidence and component source inspection as auxiliary evidence for drift diagnosis and migration traceability. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
 
 ### Alternatives Considered
 
@@ -80,7 +80,7 @@ created: '2026-05-09'
 
 ### Constraints & Dependencies
 
-- Migration must follow app test directory boundaries: `apps/web` tests live in `apps/web/tests/`; visual consistency validation for this spec is performed by an agent comparing two local service pairs and recorded in phase notes as the development acceptance workflow. Source: `apps/AGENTS.md:19-24`; `AGENTS.md:82-89`
+- Migration must follow app test directory boundaries: `apps/web` tests live in `apps/web/tests/`; visual consistency validation for this spec is performed by an agent comparing two local service pairs with agent-browser CLI and Chrome DevTools MCP, recorded in phase notes as the development acceptance workflow. Source: `apps/AGENTS.md:19-24`; `AGENTS.md:82-89`
 - Dual-worktree comparison requires independent daemon/web port assignments for the baseline and development worktrees; `tools-dev` supports explicit flags for both port types. Source: `AGENTS.md:40-45,82-89,91-104`
 - The root command boundary keeps repository-level checks such as `pnpm guard` and `pnpm typecheck`; web validation uses package-scoped commands. Source: `AGENTS.md#Root command boundary`; `apps/AGENTS.md:39-51`
 - Adding Tailwind/PostCSS dependencies or config changes package manifests / build entries, so `pnpm install` must run to keep workspace links and the lockfile consistent. Source: `AGENTS.md#Validation strategy`; `apps/web/package.json:23-29`
@@ -112,7 +112,7 @@ created: '2026-05-09'
 - Scope: token mapping. Impact: expose existing color, radius, and shadow CSS variables as Tailwind theme variables while preserving runtime custom accent behavior that writes to the same `--accent*` variables; use native Tailwind utilities for font, spacing, and font size. Source: `apps/web/src/index.css:6-63`; `apps/web/src/state/appearance.ts:17-52`; `apps/web/app/layout.tsx:21-29`; `specs/change/20260509-token-first-tailwind/token.md`; `https://tailwindcss.com/docs/theme`
 - Scope: constraints. Impact: extend the repository guard to explicitly check default Tailwind palette classes and uncontrolled hardcoded colors, with allowlists for brand/user-content scenarios. Source: `scripts/guard.ts:138-151,205-221`; `apps/web/src/components/AgentIcon.tsx:46-99`; `apps/web/src/components/SketchEditor.tsx:72,144-149`; `apps/web/src/components/FileViewer.tsx:1448-1474`
 - Scope: testing and validation. Impact: web-owned tests live in `apps/web/tests/`; validate through `pnpm guard`, `pnpm typecheck`, `pnpm --filter @open-design/web test`, and `pnpm --filter @open-design/web build`. Source: `apps/AGENTS.md:19-24,39-51`; `AGENTS.md#Validation strategy`
-- Scope: agent visual consistency validation. Impact: each development slice uses a baseline worktree and development worktree, each running its own web/daemon pair; the agent compares the same scenarios across both services through the agent-browser CLI and Chrome DevTools MCP to validate consistent frontend display before and after the refactor. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
+- Scope: agent visual consistency validation. Impact: each development slice uses a baseline worktree and development worktree, each running its own web/daemon pair; the agent compares the same scenarios across both services through the agent-browser CLI and Chrome DevTools MCP, using screenshots as the primary comparison record and component source inspection as auxiliary evidence, to validate consistent frontend display before and after the refactor. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
 
 ### Design Decisions
 
@@ -126,7 +126,7 @@ created: '2026-05-09'
 - Decision: allow explicit exceptions for brand assets, SVG illustrations, canvas/user content colors, and color conversion helpers; app UI chrome uses token classes or CSS variables. Source: `apps/web/src/components/AgentIcon.tsx:46-99`; `apps/web/src/components/SketchEditor.tsx:72,144-149`; `apps/web/src/components/FileViewer.tsx:1448-1474`
 - Decision: project custom Tailwind tokens cover color, radius, and shadow; radius/shadow utilities resolve to existing CSS variables so cards, popovers, modals, inputs, buttons, and dark-theme shadow overrides keep their current visuals; font, spacing, and typography scale use native Tailwind utilities. Source: `specs/change/20260509-token-first-tailwind/token.md`
 - Decision: after dependency or config-related package changes, run `pnpm install`, then run package-scoped web validation and repo checks. Source: `AGENTS.md#Validation strategy`; `apps/web/package.json:23-29`
-- Decision: migration acceptance uses dual-worktree agent comparison. Every migration PR runs independent web/daemon pairs for the baseline and development worktrees, and the agent checks visual consistency for the same scenarios across both services. Display drift is fixed or recorded as an approved deviation. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
+- Decision: migration acceptance uses dual-worktree agent comparison. Every migration PR runs independent web/daemon pairs for the baseline and development worktrees, and the agent checks visual consistency for the same scenarios across both services. Screenshot comparison is the required primary artifact; component source inspection supports diagnosis and traceability for migrated styles. Display drift is fixed or recorded as an approved deviation. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
 
 ### Why this design
 
@@ -142,7 +142,7 @@ created: '2026-05-09'
 - Type safety: after config and TS guard changes, run `pnpm typecheck` and `pnpm --filter @open-design/web typecheck`. Source: `AGENTS.md#Validation strategy`; `apps/AGENTS.md:39-51`
 - Constraint mechanism: add/extend guard coverage for disallowed default palette classes and hardcoded UI colors, then verify with `pnpm guard`. Source: `scripts/guard.ts:138-151,205-221,401-422`
 - Web tests: when adding style-policy helper logic, add focused Vitest coverage under `apps/web/tests/`. Source: `apps/AGENTS.md:19-24`; `apps/web/package.json:23-29`
-- Agent visual consistency validation: run `pnpm tools-dev run web --daemon-port <port> --web-port <port>` separately in the baseline worktree and development worktree; the agent uses agent-browser CLI and Chrome DevTools MCP to compare major pages/component areas, fixed viewport, light/dark/system themes, and custom accent across the two services. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
+- Agent visual consistency validation: run `pnpm tools-dev run web --daemon-port <port> --web-port <port>` separately in the baseline worktree and development worktree; the agent uses agent-browser CLI and Chrome DevTools MCP to compare screenshots for major pages/component areas, fixed viewport, light/dark/system themes, and custom accent across the two services, with component source inspection used to explain differences and confirm class migration traceability. Source: `AGENTS.md:40-45,82-89,91-104`; `apps/web/src/index.css:65-157`; `apps/web/src/state/appearance.ts:28-52`
 - Manual visual review: use the agent comparison record to check Dashboard/app shell, project detail, settings dialog, file viewer/inspect overlay, sketch editor, live artifact card, and modal/popover/control states; approved deviations must be included in implementation notes.
 
 ### File Structure
@@ -223,9 +223,9 @@ Goal: add Tailwind v4 infrastructure, expose Open Design tokens as Tailwind util
   - [ ] Substep 4.5 Verify: Confirm the migration inventory covers all global classes referenced by TSX; the migration inventory is an implementation reference, while actual migration scope and classification follow the current code at implementation time, with on-the-spot judgment for classes added or changed after rebase.
   - [ ] Substep 4.6 Verify: Run `pnpm guard`, `pnpm typecheck`, `pnpm --filter @open-design/web test`, and `pnpm --filter @open-design/web build`.
 - [ ] Step 5: Establish the dual-worktree agent visual comparison workflow
-  - [ ] Substep 5.1 Implement: Define the agent comparison scenario list, viewport, theme/accent matrix, fixture data, dual-worktree port assignments, and phase notes format.
+  - [ ] Substep 5.1 Implement: Define the agent comparison scenario list, viewport, theme/accent matrix, fixture data, dual-worktree port assignments, screenshot artifact requirements, component source inspection guidance, and phase notes format.
   - [ ] Substep 5.2 Implement: Prepare startup instructions for the baseline and development worktrees: run `pnpm tools-dev run web --daemon-port <port> --web-port <port>` on both sides so web/daemon run independently.
-  - [ ] Substep 5.3 Verify: Have an agent equipped with agent-browser CLI and Chrome DevTools MCP compare Dashboard/app shell, project detail, settings dialog, file viewer/inspect overlay, sketch editor, live artifact card, and modal/popover/control states between the baseline and development services.
+  - [ ] Substep 5.3 Verify: Have an agent equipped with agent-browser CLI and Chrome DevTools MCP compare screenshots for Dashboard/app shell, project detail, settings dialog, file viewer/inspect overlay, sketch editor, live artifact card, and modal/popover/control states between the baseline and development services.
   - [ ] Substep 5.4 Verify: Agent comparison must cover light, dark, system, and custom accent. When layout offset, token color drift, radius/shadow differences, or theme-state differences appear, fix the styles or record an approved deviation.
   - [ ] Substep 5.5 Implement: In `phase1-notes.md`, record foundation changes, migration inventory, dual-worktree service URLs, agent comparison coverage scenarios, discovered issues, and approved deviations.
 
@@ -241,7 +241,7 @@ Goal: migrate app shell, buttons, inputs, cards, popovers, and modals using toke
   - [ ] Substep 6.5 Verify: Confirm shell/common controls stay visually stable through CSS variables under light, dark, system, and custom accent modes.
   - [ ] Substep 6.6 Verify: Run `pnpm guard`, `pnpm typecheck`, `pnpm --filter @open-design/web test`, and `pnpm --filter @open-design/web build`.
 - [ ] Step 7: Agent-validate shell and common controls visual equivalence
-  - [ ] Substep 7.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare shell/common controls visual consistency.
+  - [ ] Substep 7.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare shell/common controls screenshots, with component source inspection used as supporting context for any drift.
   - [ ] Substep 7.2 Implement: In `phase2-notes.md`, record this phase's migrated / retained / deferred class list, dual-worktree service URLs, agent comparison results, and approved deviations.
 
 ### Phase 3: Settings and project panels PR
@@ -256,7 +256,7 @@ Goal: migrate settings dialogs, project creation, project detail panels, and sta
   - [ ] Substep 8.5 Verify: Cover visual checks for settings dialog, project creation, project detail, and status surfaces under light/dark/system/custom accent.
   - [ ] Substep 8.6 Verify: Run `pnpm guard`, `pnpm typecheck`, `pnpm --filter @open-design/web test`, and `pnpm --filter @open-design/web build`.
 - [ ] Step 9: Agent-validate settings and project panel visual equivalence
-  - [ ] Substep 9.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare settings/project panels visual consistency.
+  - [ ] Substep 9.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare settings/project panel screenshots, with component source inspection used as supporting context for any drift.
   - [ ] Substep 9.2 Implement: In `phase3-notes.md`, record this phase's migrated / retained / deferred class list, dual-worktree service URLs, agent comparison results, and approved deviations.
 
 ### Phase 4: File viewer, inspect, and edit-mode PR
@@ -271,7 +271,7 @@ Goal: migrate file viewer chrome, inspect/comment overlays, and edit-mode integr
   - [ ] Substep 10.5 Verify: Cover visual checks for file viewer, inspect overlay, comment/selection overlay, and edit-mode integration under light/dark/system/custom accent.
   - [ ] Substep 10.6 Verify: Run `pnpm guard`, `pnpm typecheck`, `pnpm --filter @open-design/web test`, and `pnpm --filter @open-design/web build`.
 - [ ] Step 11: Agent-validate file viewer and inspect/edit-mode overlays visual equivalence
-  - [ ] Substep 11.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare file viewer/inspect/edit-mode visual consistency.
+  - [ ] Substep 11.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare file viewer/inspect/edit-mode screenshots, with component source inspection used as supporting context for any drift.
   - [ ] Substep 11.2 Implement: In `phase4-notes.md`, record this phase's migrated / retained / deferred class list, dual-worktree service URLs, agent comparison results, and approved deviations.
 
 ### Phase 5: Sketch, runtime content, and external document PR
@@ -287,7 +287,7 @@ Goal: migrate app chrome around sketch canvases and runtime surfaces while retai
   - [ ] Substep 12.6 Verify: Confirm global loading shell, base styles, keyframes, and content-wide CSS in `index.css` continue to work.
   - [ ] Substep 12.7 Verify: Run `pnpm guard`, `pnpm typecheck`, `pnpm --filter @open-design/web test`, and `pnpm --filter @open-design/web build`.
 - [ ] Step 13: Agent-validate sketch and runtime content boundary visual equivalence
-  - [ ] Substep 13.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare sketch/runtime/live artifact visual consistency.
+  - [ ] Substep 13.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP to compare sketch/runtime/live artifact screenshots, with component source inspection used as supporting context for any drift.
   - [ ] Substep 13.2 Implement: In `phase5-notes.md`, record this phase's migrated / retained / deferred class list, dual-worktree service URLs, agent comparison results, and approved deviations.
 
 ### Phase 6: Cleanup and enforcement PR
@@ -304,7 +304,7 @@ Goal: remove migrated component-level selectors, tighten guard allowlists, refre
   - [ ] Substep 14.7 Verify: Run `pnpm --filter @open-design/web test`.
   - [ ] Substep 14.8 Verify: Run `pnpm --filter @open-design/web build`.
 - [ ] Step 15: Agent-validate final visual equivalence
-  - [ ] Substep 15.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP run the full scenario matrix and confirm the visuals are consistent before and after the refactor or deviations have been approved.
+  - [ ] Substep 15.1 Verify: Start one web/daemon pair in the baseline worktree and one in the development worktree; have the agent use agent-browser CLI and Chrome DevTools MCP run the full screenshot scenario matrix, use component source inspection as supporting context, and confirm the visuals are consistent before and after the refactor or deviations have been approved.
   - [ ] Substep 15.2 Implement: In `phase6-notes.md`, record final dual-worktree service URLs, agent comparison results, and any approved deviations.
 
 ## Notes
