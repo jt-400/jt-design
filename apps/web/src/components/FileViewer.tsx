@@ -59,7 +59,7 @@ import type {
 import { Icon } from './Icon';
 import { Toast } from './Toast';
 import { PaletteTweaks, type PaletteId } from './PaletteTweaks';
-import { PreviewDrawOverlay } from './PreviewDrawOverlay';
+import { PreviewDrawOverlay, type PreviewDrawMode } from './PreviewDrawOverlay';
 import {
   buildBoardCommentAttachments,
   commentsToAttachments,
@@ -3269,13 +3269,15 @@ function ReactComponentViewer({
         {source === null || (mode === 'preview' && !srcDoc) ? (
           <div className="viewer-empty">{t('fileViewer.loading')}</div>
         ) : mode === 'preview' ? (
-          <iframe
-            data-testid="react-component-preview-frame"
-            title={file.name}
-            sandbox="allow-scripts"
-            srcDoc={srcDoc}
-            style={{ width: '100%', height: '100%', border: 0 }}
-          />
+          <PreviewDrawOverlay>
+            <iframe
+              data-testid="react-component-preview-frame"
+              title={file.name}
+              sandbox="allow-scripts"
+              srcDoc={srcDoc}
+              style={{ width: '100%', height: '100%', border: 0 }}
+            />
+          </PreviewDrawOverlay>
         ) : (
           <CodeWithLines text={source} />
         )}
@@ -3442,6 +3444,8 @@ function HtmlViewer({
   const [palettePopoverOpen, setPalettePopoverOpen] = useState(false);
   const [selectedPalette, setSelectedPalette] = useState<PaletteId | null>(null);
   const [previewPalette, setPreviewPalette] = useState<PaletteId | null>(null);
+  const [drawOverlayOpen, setDrawOverlayOpen] = useState(false);
+  const [drawOverlayMode, setDrawOverlayMode] = useState<PreviewDrawMode>('click');
   // for hint managing hint box state
   const [openHintBox, setOpenHintBox] = useState(true);
   const [manualEditMode, setManualEditModeRaw] = useState(false);
@@ -3706,6 +3710,7 @@ function HtmlViewer({
     ? manualEditFrozenSource
     : livePreviewSource;
   const manualEditPageStylesEnabled = typeof source === 'string' && isManualEditFullHtmlDocument(source);
+  const drawClickSelectionMode = drawOverlayOpen && drawOverlayMode === 'click' && !manualEditMode;
   // When we URL-load the iframe directly, skip every in-host inlining /
   // srcDoc-rebuilding step. The browser does the asset resolution itself,
   // which is the whole point of the URL-load path.
@@ -3715,6 +3720,7 @@ function HtmlViewer({
     commentMode: boardMode || manualEditMode,
     inspectMode,
     paletteActive: palettePopoverOpen || selectedPalette !== null,
+    drawMode: drawOverlayOpen,
     forceInline,
   });
   const previewSrcUrl = useMemo(
@@ -3740,13 +3746,13 @@ function HtmlViewer({
       deck: effectiveDeck,
       baseHref: projectRawUrl(projectId, baseDirFor(file.name)),
       initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
-      commentBridge: boardMode && !manualEditMode,
+      commentBridge: (boardMode && !manualEditMode) || drawClickSelectionMode,
       inspectBridge: inspectMode,
       editBridge: manualEditMode,
       paletteBridge: true,
       initialPalette: selectedPalette,
     }) : ''),
-    [previewSource, effectiveDeck, projectId, file.name, previewStateKey, boardMode, manualEditMode, inspectMode, selectedPalette],
+    [previewSource, effectiveDeck, projectId, file.name, previewStateKey, boardMode, manualEditMode, drawClickSelectionMode, inspectMode, selectedPalette],
   );
 
   useEffect(() => {
@@ -3773,8 +3779,12 @@ function HtmlViewer({
   useEffect(() => {
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
-    win.postMessage({ type: 'od:comment-mode', enabled: boardMode, mode: boardTool }, '*');
-  }, [boardMode, boardTool, srcDoc]);
+    win.postMessage({
+      type: 'od:comment-mode',
+      enabled: boardMode || drawClickSelectionMode,
+      mode: drawClickSelectionMode ? 'picker' : boardTool,
+    }, '*');
+  }, [boardMode, boardTool, drawClickSelectionMode, srcDoc]);
 
   useEffect(() => {
     const win = iframeRef.current?.contentWindow;
@@ -3799,7 +3809,11 @@ function HtmlViewer({
   function syncBridgeModes() {
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
-    win.postMessage({ type: 'od:comment-mode', enabled: boardMode, mode: boardTool }, '*');
+    win.postMessage({
+      type: 'od:comment-mode',
+      enabled: boardMode || drawClickSelectionMode,
+      mode: drawClickSelectionMode ? 'picker' : boardTool,
+    }, '*');
     win.postMessage({ type: 'od-edit-mode', enabled: manualEditMode }, '*');
     postSelectedManualEditTargetToIframe(manualEditMode ? selectedManualEditTarget?.id ?? null : null);
   }
@@ -3829,7 +3843,7 @@ function HtmlViewer({
   // artifacts) because the comment-mode listener short-circuits on
   // `!boardMode`. Issue #890.
   useEffect(() => {
-    if (!inspectMode && !boardMode) {
+    if (!inspectMode && !boardMode && !drawClickSelectionMode) {
       setLiveCommentTargets((current) => (current.size > 0 ? new Map() : current));
       return;
     }
@@ -3867,7 +3881,7 @@ function HtmlViewer({
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [inspectMode, boardMode, file.name]);
+  }, [inspectMode, boardMode, drawClickSelectionMode, file.name]);
 
   useEffect(() => {
     setActiveCommentTarget(null);
@@ -3936,7 +3950,8 @@ function HtmlViewer({
   }, [selectedManualEditTarget?.id]);
 
   useEffect(() => {
-    if (!boardMode) {
+    const selectionMode = boardMode || drawClickSelectionMode;
+    if (!selectionMode) {
       setActiveCommentTarget((current) => (current ? null : current));
       setHoveredCommentTarget((current) => (current ? null : current));
       setLiveCommentTargets((current) => (current.size > 0 ? new Map() : current));
@@ -4010,8 +4025,10 @@ function HtmlViewer({
         setActiveCommentTarget(snapshot);
         setHoveredCommentTarget(snapshot);
         setLiveCommentTargets((current) => new Map(current).set(snapshot.elementId, snapshot));
-        setCommentDraft(existing?.note ?? '');
-        setQueuedBoardNotes([]);
+        if (boardMode) {
+          setCommentDraft(existing?.note ?? '');
+          setQueuedBoardNotes([]);
+        }
         return;
       }
       if (data.type === 'od:pod-clear') {
@@ -4051,7 +4068,7 @@ function HtmlViewer({
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [boardMode, file.name, previewComments]);
+  }, [boardMode, drawClickSelectionMode, file.name, previewComments]);
 
   useEffect(() => {
     if (!manualEditMode) {
@@ -4781,12 +4798,10 @@ function HtmlViewer({
     setStrokePoints([]);
   }
 
-  function activateBoard(nextTool?: BoardTool) {
-    setMode('preview');
+  function activateBoard(tool: BoardTool) {
+    setBoardTool(tool);
+    setDrawOverlayOpen(false);
     setBoardMode(true);
-    if (nextTool) {
-      setBoardTool(nextTool);
-    }
   }
 
   function queueCurrentDraft() {
@@ -4833,7 +4848,6 @@ function HtmlViewer({
   const canShare = source !== null;
   const exportTitle = file.name.replace(/\.html?$/i, '') || file.name;
   const canPptx = canShare && Boolean(onExportAsPptx) && !streaming;
-  const boardAvailable = source !== null;
   const visibleSideComments = previewComments.filter(
     (comment) => comment.filePath === file.name && comment.status === 'open',
   );
@@ -4929,6 +4943,7 @@ function HtmlViewer({
     if (state === 'failed') return t('fileViewer.deployLinkFailed');
     return t('fileViewer.deployLinkPreparingLabel');
   };
+  const boardAvailable = mode === 'preview' && source !== null;
 
   return (
     <div className="viewer html-viewer">
@@ -4952,7 +4967,10 @@ function HtmlViewer({
             </button>
             <button
               className={`viewer-tab ${mode === 'source' ? 'active' : ''}`}
-              onClick={() => setMode('source')}
+              onClick={() => {
+                setDrawOverlayOpen(false);
+                setMode('source');
+              }}
             >
               {t('fileViewer.source')}
             </button>
@@ -5117,6 +5135,7 @@ function HtmlViewer({
                 setBoardMode(false);
                 clearBoardComposer();
                 setInspectMode(false);
+                setDrawOverlayOpen(false);
                 setMode('preview');
                 setManualEditViewportWidth(previewBodyRef.current?.clientWidth ?? null);
                 setManualEditMode(true);
@@ -5129,6 +5148,28 @@ function HtmlViewer({
           >
             <Icon name="edit" size={13} />
             <span>{t('fileViewer.edit')}</span>
+          </button>
+          <button
+            className={`viewer-action${drawOverlayOpen ? ' active' : ''}`}
+            type="button"
+            data-testid="draw-overlay-toggle"
+            title={t('fileViewer.draw')}
+            aria-pressed={drawOverlayOpen}
+            onClick={() => {
+              const next = !drawOverlayOpen;
+              if (next) {
+                setManualEditMode(false);
+                setBoardMode(false);
+                clearBoardComposer();
+                setInspectMode(false);
+                setDrawOverlayMode('draw');
+                setMode('preview');
+              }
+              setDrawOverlayOpen(next);
+            }}
+          >
+            <Icon name="draw" size={13} />
+            <span>{t('fileViewer.draw')}</span>
           </button>
           <span className="viewer-divider" aria-hidden />
           <PreviewViewportControls
@@ -5436,37 +5477,46 @@ function HtmlViewer({
                     : previewScaleShellStyle(previewViewport, previewScale)
                 }
               >
-                {useUrlLoadPreview ? (
-                  <iframe
-                    ref={iframeRef}
-                    data-testid="artifact-preview-frame"
-                    data-od-render-mode="url-load"
-                    title={file.name}
-                    sandbox="allow-scripts"
-                    src={previewSrcUrl}
-                    onLoad={syncBridgeModes}
-                    style={{ width: '100%', height: '100%', border: 0 }}
-                  />
-                ) : (
-                  <iframe
-                    ref={iframeRef}
-                    data-testid="artifact-preview-frame"
-                    data-od-render-mode="srcdoc"
-                    title={file.name}
-                    sandbox="allow-scripts"
-                    srcDoc={srcDoc}
-                    onLoad={() => {
-                      replayInspectOverridesToIframe();
-                      syncBridgeModes();
-                    }}
-                    style={{ width: '100%', height: '100%', border: 0 }}
-                  />
-                )}
+                <PreviewDrawOverlay
+                  active={drawOverlayOpen}
+                  onActiveChange={setDrawOverlayOpen}
+                  onModeChange={setDrawOverlayMode}
+                  captureTarget={drawClickSelectionMode ? activeCommentTarget : null}
+                  sendDisabled={streaming}
+                  sendDisabledReason="当前正有任务在执行"
+                >
+                  {useUrlLoadPreview ? (
+                    <iframe
+                      ref={iframeRef}
+                      data-testid="artifact-preview-frame"
+                      data-od-render-mode="url-load"
+                      title={file.name}
+                      sandbox="allow-scripts"
+                      src={previewSrcUrl}
+                      onLoad={syncBridgeModes}
+                      style={{ width: '100%', height: '100%', border: 0 }}
+                    />
+                  ) : (
+                    <iframe
+                      ref={iframeRef}
+                      data-testid="artifact-preview-frame"
+                      data-od-render-mode="srcdoc"
+                      title={file.name}
+                      sandbox="allow-scripts"
+                      srcDoc={srcDoc}
+                      onLoad={() => {
+                        replayInspectOverridesToIframe();
+                        syncBridgeModes();
+                      }}
+                      style={{ width: '100%', height: '100%', border: 0 }}
+                    />
+                  )}
+                </PreviewDrawOverlay>
               </div>
             </div>
-            {boardMode ? (
+            {(boardMode || drawClickSelectionMode) ? (
               <CommentPreviewOverlays
-                comments={previewComments}
+                comments={boardMode ? previewComments : []}
                 liveTargets={liveCommentTargets}
                 hoveredTarget={hoveredCommentTarget}
                 activeTarget={activeCommentTarget}

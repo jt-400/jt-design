@@ -33,28 +33,32 @@ export function critiqueEventsUrl(projectId: string): string {
 
 /**
  * Lift an SSE-wire `CritiqueSseEvent` back into the flat `PanelEvent` shape
- * the reducer consumes. The daemon emits one channel per event name with
- * the payload (sans `type`) as JSON; this is the inverse of
- * `panelEventToSse` in the contracts package.
+ * the reducer consumes. Inverse of `panelEventToSse` in the contracts
+ * package: the daemon emits one channel per event name with the payload
+ * (sans `type`) as JSON.
  *
- * Two defensive moves matter here:
+ * The function does only two things:
  *
- *   1. The SSE channel name is authoritative for `type`. A payload-provided
- *      `type` (malformed or compromised frame) must NOT override the
- *      channel-derived value, so we spread `data` first and pin `type`
- *      last. Otherwise a daemon bug or a man-in-the-middle could route a
- *      `critique.run_started` channel into a `ship` action shape.
- *
- *   2. The result has to pass `isPanelEvent` before it leaves this
- *      function. That predicate is the contract-level source of truth for
- *      "this is a recognised event with a non-empty runId"; if the cast
- *      fails (missing runId, unknown type), we drop the frame and the
- *      reducer never sees it.
+ *   1. Derive `type` from the channel name and pin it last so a payload
+ *      `type` field cannot override the channel (a malformed or hostile
+ *      frame on `critique.run_started` carrying `type: 'ship'` must not be
+ *      routed as a ship action).
+ *   2. Run the contract-level strict `isPanelEvent` guard on the merged
+ *      object. That guard owns the full validation surface (variant
+ *      fields, closed-enum membership, finite numerics) so a frame that
+ *      passes here is safe for the reducer and every downstream component
+ *      that indexes badge / role / reason tables by enum value.
  */
 export function sseToPanelEvent(eventName: CritiqueSseEventName, data: unknown): PanelEvent | null {
   if (data === null || typeof data !== 'object') return null;
   const type = eventName.slice('critique.'.length);
+  // Channel name is authoritative for `type`; spread payload first then pin
+  // `type` last so a hostile or malformed frame cannot route a `ship`
+  // payload through the `run_started` channel.
   const candidate = { ...(data as Record<string, unknown>), type };
+  // `isPanelEvent` is the contract-level strict guard (Siri-Ray round-3 P1
+  // on PR #1314): header + every variant-specific field + closed-enum
+  // membership + finite numerics, in one pass.
   return isPanelEvent(candidate) ? candidate : null;
 }
 
