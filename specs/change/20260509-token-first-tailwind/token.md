@@ -268,14 +268,15 @@ Use this vocabulary for TSX migrations.
 4. Use project-backed radius and shadow utilities for migrated components that currently depend on `--radius*` or `--shadow*`; examples include `rounded-card`, `rounded-panel`, `shadow-token-sm`, and `shadow-token-md`.
 5. Rely on the local `index.css` border-style reset from the Tailwind no-Preflight setup so `border border-border`, `border-border-strong`, and related token utilities render solid borders. Add explicit `border-solid` only for isolated scopes that cannot inherit that reset.
 6. Use exact type aliases `text-ui-9`, `text-ui-10`, `text-ui-10_5`, `text-ui-11`, `text-ui-11_5`, `text-ui-12_5`, `text-ui-13`, and `text-ui-13_5`, or inherited type size when the parent already supplies the exact current size, for migrated component text currently defined as 9px, 10px, 10.5px, 11px, 11.5px, 12.5px, 13px, or 13.5px in `index.css`.
-7. Use `font-sans`, `font-serif`, and `font-mono` only after the Tailwind font theme aliases point to `var(--sans)`, `var(--serif)`, and `var(--mono)`; migrated editorial and code/file-path text must preserve the current project stacks.
-8. Use complete static class maps for dynamic variants. Avoid fragment interpolation such as `bg-${status}-surface`; prefer maps such as `{ success: 'bg-success-surface text-success', danger: 'bg-danger-surface text-danger' }`. Add an explicit safelist only when runtime-generated classes are required.
-9. Use `selection`/`inspect` tokens for preview annotation overlays in app UI and edit-mode integration. Keep file color conversion helpers allowlisted only when they transport user-authored colors.
-10. Keep brand assets, SVG illustration colors, sketch/canvas user colors, and file color conversion helpers as documented exceptions.
-11. Add one color token before repeating the same arbitrary color value in multiple components.
-12. Keep complex one-off gradients and `color-mix()` expressions local during migration only when they encode component-specific art direction; promote repeated patterns into the interaction/status tokens above.
-13. Treat CSS-wide/special keywords such as `transparent`, `currentColor` / `currentcolor`, `inherit`, `initial`, `unset`, and `revert` as non-token color semantics for transparent fills, SVG/current-color inheritance, and reset/inherit states. The guard should exempt these keywords while still rejecting real unapproved named colors in app UI chrome.
-14. Add style guard fixtures for the keyword exemptions and for at least one rejected real named color so the guard distinguishes CSS semantics from unapproved palette names.
+7. Before applying token utilities to an element, remove, constrain, or move to `@layer base` any retained global element/reset selector that sets the same CSS properties. Unlayered retained CSS must not override migrated token utilities such as `bg-accent`, `rounded-card`, `border-border`, `px-*`, or `font-*` on the same element.
+8. Use `font-sans`, `font-serif`, and `font-mono` only after the Tailwind font theme aliases point to `var(--sans)`, `var(--serif)`, and `var(--mono)`; migrated editorial and code/file-path text must preserve the current project stacks.
+9. Use complete static class maps for dynamic variants. Avoid fragment interpolation such as `bg-${status}-surface`; prefer maps such as `{ success: 'bg-success-surface text-success', danger: 'bg-danger-surface text-danger' }`. Add an explicit safelist only when runtime-generated classes are required.
+10. Use `selection`/`inspect` tokens for preview annotation overlays in app UI and edit-mode integration. Keep file color conversion helpers allowlisted only when they transport user-authored colors.
+11. Keep brand assets, SVG illustration colors, sketch/canvas user colors, and file color conversion helpers as documented exceptions.
+12. Add one color token before repeating the same arbitrary color value in multiple components.
+13. Keep complex one-off gradients and `color-mix()` expressions local during migration only when they encode component-specific art direction; promote repeated patterns into the interaction/status tokens above.
+14. Treat CSS-wide/special keywords such as `transparent`, `currentColor` / `currentcolor`, `inherit`, `initial`, `unset`, and `revert` as non-token color semantics for transparent fills, SVG/current-color inheritance, and reset/inherit states. The guard should exempt these keywords while still rejecting real unapproved named colors in app UI chrome.
+15. Add style guard fixtures for the keyword exemptions and for at least one rejected real named color so the guard distinguishes CSS semantics from unapproved palette names.
 
 ## Existing conflicts and exception handling
 

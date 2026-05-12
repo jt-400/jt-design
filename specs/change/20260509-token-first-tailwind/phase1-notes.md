@@ -17,6 +17,7 @@
   }
   ```
 - Keep Preflight excluded in Phase 1 and retain the project-owned border reset from Tailwind's Preflight contract in the base layer so `border border-*` token utilities render solid borders from the later utilities layer.
+- Record the cascade-layer policy for retained `index.css` element/reset rules: any rule that can override migrated Tailwind utilities must move into `@layer base`, be constrained to non-migrated scopes, or be removed before the affected component migration lands.
 
 ## Verification
 
