@@ -11,6 +11,13 @@
 - `scripts/guard.ts` - allowlisted the exact PostCSS config path with a compatibility-format comment so the residual JavaScript guard continues to fail on unplanned project-owned JavaScript.
 - `apps/web/src/index.css` - added Tailwind theme/utilities layered imports, kept Preflight excluded, added the local base-layer border-style reset, and recorded the cascade policy for retained element/reset rules before component migration.
 
+### Step 2: Open Design Tailwind tokens
+
+- `apps/web/src/index.css` - added the CSS-first `@theme` block that clears Tailwind default colors and exposes the project-approved color namespace for surfaces, borders, text, accent, semantic status, interaction overlays, radius, shadows, fonts, and exact compact UI text-size aliases.
+- `apps/web/src/index.css` - added missing runtime source variables for `--accent-wash`, `--accent-foreground`, `--warning-border`, modal overlay, selection overlays, and inspect overlays so Tailwind utilities resolve through the same CSS-variable token path as existing styles.
+- `apps/web/src/index.css` - documented the token utility vocabulary next to the `@theme` block, including representative border/radius/shadow examples and the no-Preflight border reset expectation for `border border-border`.
+- Token resolution remains CSS-variable-first: light, dark, and system modes update the existing token variables through `:root`, `[data-theme="dark"]`, and `html:not([data-theme])`; custom accent continues to update `--accent*` variables through the pre-hydration script and `applyAppearanceToDocument()`.
+
 ### Implementation requirements
 
 - Tailwind no-Preflight setup must use the official layered CSS imports in `apps/web/src/index.css`:
@@ -35,3 +42,4 @@
 - `pnpm install` - passed; pnpm emitted existing workspace bin/link warnings for missing daemon dist CLI during install.
 - `pnpm guard` - passed; residual JavaScript allowlist accepts `apps/web/postcss.config.mjs`.
 - `pnpm --filter @open-design/web build` - passed with Next.js 16/Turbopack.
+- `pnpm --filter @open-design/web build` - passed after adding the Open Design `@theme` token aliases and source variables.

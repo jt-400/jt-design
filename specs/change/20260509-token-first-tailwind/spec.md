@@ -200,12 +200,12 @@ Goal: add Tailwind v4 infrastructure, expose Open Design tokens as Tailwind util
   - [x] Substep 1.5 Verify: Run `pnpm install`.
   - [x] Substep 1.6 Verify: Run `pnpm guard` and confirm the PostCSS config allowlist works.
   - [x] Substep 1.7 Verify: Run `pnpm --filter @open-design/web build`.
-- [ ] Step 2: Expose Open Design tokens as Tailwind utilities
-  - [ ] Substep 2.1 Implement: Add CSS-first `@theme` aliases for colors, core semantic status, selection/inspect overlays, radius, shadow, font tokens, and exact existing UI text-size aliases; use native Tailwind utilities for spacing and standard typography scale. Confirm token border examples such as `border border-border` render against the local border-style reset when Preflight is omitted.
-  - [ ] Substep 2.2 Implement: Clear default Tailwind colors and declare the project-approved color namespace.
-  - [ ] Substep 2.3 Implement: Document the token class vocabulary near the theme block.
-  - [ ] Substep 2.4 Verify: Confirm light, dark, system, and custom accent modes all resolve through the same CSS variables.
-  - [ ] Substep 2.5 Verify: Run `pnpm --filter @open-design/web build`.
+- [x] Step 2: Expose Open Design tokens as Tailwind utilities
+  - [x] Substep 2.1 Implement: Add CSS-first `@theme` aliases for colors, core semantic status, selection/inspect overlays, radius, shadow, font tokens, and exact existing UI text-size aliases; use native Tailwind utilities for spacing and standard typography scale. Confirm token border examples such as `border border-border` render against the local border-style reset when Preflight is omitted.
+  - [x] Substep 2.2 Implement: Clear default Tailwind colors and declare the project-approved color namespace.
+  - [x] Substep 2.3 Implement: Document the token class vocabulary near the theme block.
+  - [x] Substep 2.4 Verify: Confirm light, dark, system, and custom accent modes all resolve through the same CSS variables.
+  - [x] Substep 2.5 Verify: Run `pnpm --filter @open-design/web build`.
 - [ ] Step 3: Add base style guardrails
   - [ ] Substep 3.1 Implement: Add a default Tailwind palette class check for app UI code in `scripts/guard.ts`.
   - [ ] Substep 3.2 Implement: Add hardcoded UI color check scaffolding covering `#hex`, `rgb()`, `rgba()`, `hsl()`, `hsla()`, and named colors. In Phase 1, keep existing hardcoded UI colors classified as migration inventory or explicit exceptions, and validate the checker through focused fixtures or temporary scoped samples so `pnpm guard` stays green until component migration phases tighten enforcement.
