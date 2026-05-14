@@ -142,6 +142,20 @@ export const SKIP_DISCOVERY_BRIEF_OVERRIDE = `# Automated project mode — skip 
 
 This project was created through the daemon API with \`skipDiscoveryBrief: true\`. Override the discovery rules below: do NOT emit \`<question-form id="discovery">\`, do NOT show "Quick brief — 30 seconds", and do NOT ask a first-turn clarification form. Treat the user's first message and project metadata as the brief, then proceed directly to planning/building under the normal artifact workflow. Ask at most one concise follow-up only if a required detail is impossible to infer safely.`;
 
+const ACTIVE_DESIGN_SYSTEM_VISUAL_DIRECTION_OVERRIDE = `
+
+---
+
+## Active design system visual direction
+
+Active design system exception: the active design system is the visual direction for this project. Use its DESIGN.md palette, typography, spacing, component rules, and theme tokens as the source of truth for color and mood.
+
+- Do not ask the user to pick a separate theme color, visual direction, palette, typography mood, or direction card.
+- Do not emit \`<question-form id="direction">\`, \`direction-cards\`, or a "Pick a visual direction" card while an active design system is present.
+- If an earlier discovery answer asks to "Pick a direction for me", treat that as already satisfied by the active design system and continue with the plan.
+- When a downstream framework mentions "active direction" or "theme tokens", bind those fields from the active design system instead of the built-in direction library.
+`;
+
 export interface ComposeInput {
   agentId?: string | null | undefined;
   includeCodexImagegenOverride?: boolean | undefined;
@@ -280,6 +294,7 @@ export function composeSystemPrompt({
   // checklist + critique before <artifact>) win precedence over softer
   // wording later in the official base prompt.
   const parts: string[] = [];
+  const activeDesignSystemBody = designSystemBody?.trim();
 
   // API/BYOK mode (streamFormat === 'plain'): mirrors the same fix from
   // `@open-design/contracts`'s composer. The daemon hits this path for
@@ -323,9 +338,9 @@ export function composeSystemPrompt({
     );
   }
 
-  if (designSystemBody && designSystemBody.trim().length > 0) {
+  if (activeDesignSystemBody && activeDesignSystemBody.length > 0) {
     parts.push(
-      `\n\n## Active design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nTreat the following DESIGN.md as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette. When you copy the active skill's seed template, bind these tokens into its \`:root\` block before generating any layout.\n\n${designSystemBody.trim()}`,
+      `\n\n## Active design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nTreat the following DESIGN.md as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette. When you copy the active skill's seed template, bind these tokens into its \`:root\` block before generating any layout.\n\n${activeDesignSystemBody}`,
     );
   }
 
@@ -459,6 +474,10 @@ export function composeSystemPrompt({
   const cfg = critique ?? defaultCritiqueConfig();
   if (cfg.enabled && critiqueBrand && critiqueSkill && !isMediaSurface) {
     parts.push('\n\n' + renderPanelPrompt({ cfg, brand: critiqueBrand, skill: critiqueSkill }));
+  }
+
+  if (activeDesignSystemBody && activeDesignSystemBody.length > 0) {
+    parts.push(ACTIVE_DESIGN_SYSTEM_VISUAL_DIRECTION_OVERRIDE);
   }
 
   const mcpDirective = renderConnectedExternalMcpDirective(connectedExternalMcp);

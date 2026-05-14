@@ -81,6 +81,28 @@ describe('composeSystemPrompt — activeStageBlocks splice (spec §23.4)', () =>
 });
 
 describe('composeSystemPrompt', () => {
+  it('treats an active design system as the visual direction', () => {
+    const prompt = composeSystemPrompt({
+      designSystemTitle: 'ComfyUI',
+      designSystemBody: '# ComfyUI\n\n--accent: #ffd500',
+      metadata: { kind: 'prototype' } as any,
+      activeStageBlocks: [
+        '\n\n## Active stage: plan\n\n### direction-picker\n\nAsk for 3-5 directions.',
+      ],
+    });
+
+    expect(prompt).toContain('## Active design system — ComfyUI');
+    expect(prompt).toContain('Active design system exception');
+    expect(prompt).toContain(
+      'the active design system is the visual direction for this project',
+    );
+    expect(prompt).toContain('Do not ask the user to pick a separate theme color');
+    expect(prompt).toContain('Do not emit `<question-form id="direction">`');
+    expect(prompt.indexOf('## Active design system visual direction')).toBeGreaterThan(
+      prompt.indexOf('### direction-picker'),
+    );
+  });
+
   it('injects live-artifact skill guidance and metadata intent', () => {
     const prompt = composeSystemPrompt({
       skillName: 'live-artifact',

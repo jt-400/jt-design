@@ -2826,6 +2826,7 @@ export function ProjectView({
               error={conversationLoadError ?? error ?? audioVoiceOptionsError}
               projectId={project.id}
               projectFiles={projectFiles}
+              hasActiveDesignSystem={!!project.designSystemId}
               projectFileNames={projectFileNames}
               skills={skills}
               onEnsureProject={handleEnsureProject}

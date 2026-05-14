@@ -201,6 +201,7 @@ interface Props {
   error: string | null;
   projectId: string | null;
   projectFiles: ProjectFile[];
+  hasActiveDesignSystem?: boolean;
   sendDisabled?: boolean;
   // Names that exist in the project folder. Tool cards and chips use this
   // set to decide whether a path can be opened as a tab.
@@ -281,6 +282,7 @@ export function ChatPane({
   error,
   projectId,
   projectFiles,
+  hasActiveDesignSystem = false,
   projectFileNames,
   onEnsureProject,
   previewComments = [],
@@ -730,6 +732,7 @@ export function ChatPane({
                         onRequestPluginFolderAgentAction={onRequestPluginFolderAgentAction}
                         isLast={m.id === lastAssistantId}
                         nextUserContent={nextUserContentByAssistantId.get(m.id)}
+                        suppressDirectionForms={hasActiveDesignSystem}
                         onSubmitForm={(text) => {
                           pinnedToBottomRef.current = true;
                           scrolledToFormRef.current = new Set();

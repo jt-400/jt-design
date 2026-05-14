@@ -31,6 +31,51 @@ function workspaceFile(name: string): ProjectFile {
 describe('AssistantMessage unfinished todo state', () => {
   afterEach(() => cleanup());
 
+  it('suppresses direction picker forms when a design system is active', () => {
+    const directionForm = [
+      'Pick one:',
+      '<question-form id="direction" title="Pick a visual direction">',
+      JSON.stringify({
+        questions: [
+          {
+            id: 'direction',
+            label: 'Direction',
+            type: 'direction-cards',
+            options: ['Modern minimal'],
+            cards: [
+              {
+                id: 'Modern minimal',
+                label: 'Modern minimal',
+                mood: 'Clean and restrained.',
+                references: ['Linear'],
+                palette: ['#ffffff', '#111111'],
+                displayFont: 'serif',
+                bodyFont: 'sans-serif',
+              },
+            ],
+          },
+        ],
+      }),
+      '</question-form>',
+    ].join('\n');
+
+    render(
+      <AssistantMessage
+        message={messageWithEvents([{ kind: 'text', text: directionForm }])}
+        streaming={false}
+        projectId="project-1"
+        isLast
+        suppressDirectionForms
+      />,
+    );
+
+    expect(
+      screen.getByText('Active design system selected. Visual direction is already locked.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Pick a visual direction')).toBeNull();
+    expect(screen.queryByText('Modern minimal')).toBeNull();
+  });
+
   it('shows a soft no-output state instead of Done for empty API responses', () => {
     render(
       <AssistantMessage
