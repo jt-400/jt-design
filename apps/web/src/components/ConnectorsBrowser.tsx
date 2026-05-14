@@ -712,6 +712,7 @@ export function ConnectorsBrowser({
         const result = await connectConnector(connectorId);
         updateConnector(result.connector);
         if (result.connector && !result.error) {
+          setConnectErrorToast(null);
           setConnectorAuthorizationPending((curr) => updateConnectorAuthorizationPendingFromConnectResponse(curr, {
             connector: result.connector!,
             ...(result.auth === undefined ? {} : { auth: result.auth }),
@@ -821,6 +822,7 @@ export function ConnectorsBrowser({
         <div className="connectors-toast-anchor">
           <Toast
             message={connectErrorToast}
+            role="alert"
             onDismiss={() => setConnectErrorToast(null)}
           />
         </div>
