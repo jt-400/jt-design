@@ -2087,7 +2087,7 @@ function GitHubConnectorGate({
 }) {
   const connected = isGithubConnectorConnected(connector);
   const account = connector?.accountLabel?.trim();
-  const busy = loading || action !== null;
+  const busy = action !== null;
   let title = 'Connect GitHub before adding a repo';
   let description = 'Open Design needs your GitHub connector before it can analyze repository links.';
   let icon: 'github' | 'settings' | 'spinner' = 'github';

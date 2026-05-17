@@ -24,12 +24,15 @@
   border-bottom: 1px solid var(--border);
 }
 .ds-setup-topbar .primary,
+.ds-setup-topbar .ghost,
 .ds-setup-actions button,
 .ds-warning-card,
 .ds-section-actions button,
-.ds-publish-card label {
+.ds-publish-card label,
+.ds-github-connector-actions button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 .ds-setup-topbar .primary {
