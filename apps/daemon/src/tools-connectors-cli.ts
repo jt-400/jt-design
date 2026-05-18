@@ -1211,6 +1211,7 @@ function renderGithubDesignEvidenceMarkdown(evidence: GithubDesignEvidence): str
     '',
     '- Use these source paths and snapshots as evidence before writing `DESIGN.md`.',
     '- Convert the inventory above into a Claude Design-style package: `README.md`, `SKILL.md`, `colors_and_type.css`, `preview/colors-*`, `preview/typography-specimens.html`, `preview/spacing-*`, `preview/components-*`, `preview/brand-assets.html`, `ui_kits/app/`, and preserved `assets/`, `build/`, or `fonts/` when evidence exists.',
+    '- When a captured asset path begins with `build/`, copy the snapshot back into a root `build/` path with its original filename, such as `context/.../files/build/icon.png` -> `build/icon.png`. Do not satisfy build/runtime icon evidence by only renaming those files into `assets/`.',
     '- Make `preview/brand-assets.html` visibly load preserved asset files from `assets/` or `build/`; do not redraw captured logos/icons as inline placeholders.',
     '- Extract concrete colors, typography, spacing, radius, component behavior, assets, and product tone only when supported by inspected files.',
     '- If evidence is missing or ambiguous, mark that uncertainty instead of inventing tokens.',
@@ -1277,6 +1278,7 @@ function renderLocalDesignEvidenceMarkdown(evidence: LocalDesignEvidence): strin
     '',
     '- Use these local source paths and snapshots as evidence before writing `DESIGN.md`.',
     '- Convert the inventory above into a Claude Design-style package: `README.md`, `SKILL.md`, `colors_and_type.css`, `preview/colors-*`, `preview/typography-specimens.html`, `preview/spacing-*`, `preview/components-*`, `preview/brand-assets.html`, `ui_kits/app/`, and preserved `assets/`, `build/`, or `fonts/` when evidence exists.',
+    '- When a captured asset path begins with `build/`, copy the snapshot back into a root `build/` path with its original filename, such as `context/.../files/build/icon.png` -> `build/icon.png`. Do not satisfy build/runtime icon evidence by only renaming those files into `assets/`.',
     '- Make `preview/brand-assets.html` visibly load preserved asset files from `assets/` or `build/`; do not redraw captured logos/icons as inline placeholders.',
     '- Extract concrete colors, typography, spacing, radius, component behavior, assets, and product tone only when supported by inspected files.',
     '- If evidence is missing or ambiguous, mark that uncertainty instead of inventing tokens.',
@@ -1288,7 +1290,7 @@ function renderLocalDesignEvidenceMarkdown(evidence: LocalDesignEvidence): strin
 function buildDesignEvidenceInventory(files: GithubSnapshotFile[]): GithubEvidenceInventorySection[] {
   const descriptions: Record<GithubEvidenceInventoryCategory, string> = {
     'Product docs and manifests': 'Use these to understand product purpose, dependency stack, scripts, and public naming.',
-    'Brand assets and icons': 'Preserve these into `assets/` or `build/` references and reflect them in `preview/brand-assets.html`.',
+    'Brand assets and icons': 'Preserve source build/runtime paths: files under `build/` should be copied back into root `build/` with their original filenames, while non-build logos, avatars, or wordmarks can be copied into `assets/`. Reflect the preserved files in `preview/brand-assets.html`.',
     Fonts: 'Preserve source font files or declarations into `fonts/` and bind them in `colors_and_type.css` when applicable.',
     'Theme, tokens, and styling': 'Extract concrete color, typography, spacing, radius, shadow, and theme-variable values from these files.',
     'App shell and navigation': 'Use these to recreate the product frame, navigation density, sidebars, window chrome, and layout rhythm.',

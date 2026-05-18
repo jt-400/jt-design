@@ -612,8 +612,10 @@ describe('connectors tool CLI', () => {
     expect(evidenceNote).toContain('Local Design Evidence');
     expect(evidenceNote).toContain('Source Evidence Inventory');
     expect(evidenceNote).toContain('Brand assets and icons');
+    expect(evidenceNote).toContain('root `build/` with their original filenames');
     expect(evidenceNote).toContain('Fonts');
     expect(evidenceNote).toContain('Claude Design-style package');
+    expect(evidenceNote).toContain('context/.../files/build/icon.png` -> `build/icon.png`');
     await expect(readFile(path.join(tmpDir, 'context/local-code/cherry-studio/files/src/styles.css'), 'utf8')).resolves.toContain('--color-primary');
     const fontBytes = await readFile(path.join(tmpDir, 'context/local-code/cherry-studio/files/src/assets/fonts/ubuntu/Ubuntu-Regular.ttf'));
     expect(fontBytes.length).toBeGreaterThan(0);
@@ -2166,10 +2168,12 @@ printf 'font-data' > "$last/fonts/ubuntu/Ubuntu-Regular.ttf"
     expect(evidenceNote).toContain('shallow local clone fallback');
     expect(evidenceNote).toContain('Source Evidence Inventory');
     expect(evidenceNote).toContain('Brand assets and icons');
+    expect(evidenceNote).toContain('root `build/` with their original filenames');
     expect(evidenceNote).toContain('Fonts');
     expect(evidenceNote).toContain('Binary Assets Preserved');
     expect(evidenceNote).toContain('build/icon.png');
     expect(evidenceNote).toContain('Claude Design-style package');
+    expect(evidenceNote).toContain('context/.../files/build/icon.png` -> `build/icon.png`');
     await expect(readFile(path.join(tmpDir, 'context/github/acme-rate-limited-ui/files/src/styles.css'), 'utf8')).resolves.toContain('--color-brand');
     const iconBytes = await readFile(path.join(tmpDir, 'context/github/acme-rate-limited-ui/files/build/icon.png'));
     expect(iconBytes.length).toBeGreaterThan(0);
