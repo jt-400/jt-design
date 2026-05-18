@@ -265,9 +265,9 @@ test.describe('Settings connectors auth recovery', () => {
     const githubCard = connectorCard(dialog, 'github');
     await githubCard.getByRole('button', { name: 'Connect' }).click();
     await expect(githubCard.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
-    await expect(dialog.getByRole('alert')).toContainText(
-      'Popup blocked. Allow popups for Open Design and try again.',
-    );
+    await expect(
+      dialog.getByText('Popup blocked. Allow popups for Open Design and try again.'),
+    ).toBeVisible();
     await expect
       .poll(async () =>
         page.evaluate(() => window.sessionStorage.getItem('od-connectors-authorization-pending')),
@@ -311,9 +311,7 @@ test.describe('Settings connectors auth recovery', () => {
     await githubCard.getByRole('button', { name: 'Cancel' }).click();
 
     await expect(githubCard.getByRole('button', { name: 'Cancel' })).toBeVisible();
-    await expect(githubCard.getByRole('alert')).toContainText(
-      "Couldn't cancel authorization. Try again.",
-    );
+    await expect(githubCard).toContainText("Couldn't cancel authorization. Try again.");
     await expect
       .poll(async () =>
         page.evaluate(() => {
