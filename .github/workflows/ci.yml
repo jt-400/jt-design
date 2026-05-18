@@ -103,10 +103,10 @@ jobs:
                 tools_pack_tests_required=true
                 build_required=true
               fi
-              if [[ "$file" == "e2e/ui/"* || "$file" == "e2e/lib/"* || "$file" == "e2e/package.json" || "$file" == "e2e/playwright.config.ts" ]]; then
+              if [[ "$file" == "e2e/ui/"* || "$file" == "e2e/lib/"* || "$file" == "e2e/resources/"* || "$file" == "e2e/package.json" || "$file" == "e2e/playwright.config.ts" ]]; then
                 ui_e2e_required=true
               fi
-              if [[ "$file" == "e2e/ui/app-restoration.test.ts" || "$file" == "e2e/ui/app-manual-edit.test.ts" || "$file" == "e2e/ui/app-design-files.test.ts" || "$file" == "e2e/ui/settings-"* || "$file" == "e2e/ui/workspace-keyboard-flows.test.ts" || "$file" == "e2e/ui/real-daemon-run.test.ts" || "$file" == "e2e/ui/critique-theater.test.ts" ]]; then
+              if [[ "$file" == "e2e/ui/app-restoration.test.ts" || "$file" == "e2e/ui/app-manual-edit.test.ts" || "$file" == "e2e/ui/app-design-files.test.ts" || "$file" == "e2e/ui/settings-"* || "$file" == "e2e/ui/workspace-keyboard-flows.test.ts" || "$file" == "e2e/ui/real-daemon-run.test.ts" || "$file" == "e2e/ui/critique-theater.test.ts" || "$file" == "e2e/resources/"* || "$file" == "e2e/lib/playwright/resources.ts" ]]; then
                 e2e_extended_required=true
               fi
               if [[ "$file" == "e2e/specs/mac.spec.ts" || "$file" == "e2e/specs/win.spec.ts" || "$file" == "e2e/specs/linux.spec.ts" || "$file" == "e2e/lib/linux-helpers.ts" || "$file" == "package.json" || "$file" == "pnpm-lock.yaml" || "$file" == "pnpm-workspace.yaml" || "$file" == ".github/workflows/ci.yml" || "$file" == ".github/workflows/release-beta.yml" || "$file" == ".github/workflows/release-preview.yml" || "$file" == ".github/workflows/release-stable.yml" ]]; then
