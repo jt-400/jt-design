@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   createDesignSystemDraft: vi.fn(),
   disconnectConnector: vi.fn(),
   ensureDesignSystemWorkspace: vi.fn(),
-  fetchConnectorDetail: vi.fn(),
+  fetchConnectorStatuses: vi.fn(),
   openFolderDialog: vi.fn(),
   patchProject: vi.fn(),
   uploadProjectFile: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('../../src/providers/registry', async () => {
     createDesignSystemDraft: mocks.createDesignSystemDraft,
     disconnectConnector: mocks.disconnectConnector,
     ensureDesignSystemWorkspace: mocks.ensureDesignSystemWorkspace,
-    fetchConnectorDetail: mocks.fetchConnectorDetail,
+    fetchConnectorStatuses: mocks.fetchConnectorStatuses,
     openFolderDialog: mocks.openFolderDialog,
     uploadProjectFile: mocks.uploadProjectFile,
     writeProjectTextFile: mocks.writeProjectTextFile,
@@ -61,7 +61,7 @@ afterEach(() => {
 beforeEach(() => {
   mocks.connectConnector.mockResolvedValue({ connector: null });
   mocks.disconnectConnector.mockResolvedValue(null);
-  mocks.fetchConnectorDetail.mockResolvedValue(null);
+  mocks.fetchConnectorStatuses.mockResolvedValue({});
   mocks.openFolderDialog.mockResolvedValue(null);
   mocks.uploadProjectFile.mockImplementation(async (_projectId: string, file: File, desiredName?: string) => ({
     name: desiredName ?? file.name,
@@ -1242,7 +1242,7 @@ describe('DesignSystemCreationFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Configure Composio key' }));
 
     expect(onOpenConnectorsTab).toHaveBeenCalledTimes(1);
-    expect(mocks.fetchConnectorDetail).not.toHaveBeenCalled();
+    expect(mocks.fetchConnectorStatuses).not.toHaveBeenCalled();
   });
 
   it('stops checking GitHub connector if the status request hangs', async () => {
@@ -1256,7 +1256,7 @@ describe('DesignSystemCreationFlow', () => {
       }
       return originalSetTimeout(...params);
     }) as typeof window.setTimeout);
-    mocks.fetchConnectorDetail.mockReturnValue(new Promise(() => {}));
+    mocks.fetchConnectorStatuses.mockReturnValue(new Promise(() => {}));
     const config = {
       composio: { apiKeyConfigured: true, apiKeyTail: 'uQEg' },
     } as AppConfig;
@@ -1281,21 +1281,41 @@ describe('DesignSystemCreationFlow', () => {
     }
   });
 
+  it('surfaces GitHub connector status errors from the connector status endpoint', async () => {
+    mocks.fetchConnectorStatuses.mockResolvedValue({
+      github: {
+        status: 'error',
+        lastError: 'GitHub authorization expired. Reconnect GitHub.',
+      },
+    });
+    const config = {
+      composio: { apiKeyConfigured: true, apiKeyTail: 'uQEg' },
+    } as AppConfig;
+
+    render(
+      <DesignSystemCreationFlow
+        onBack={() => {}}
+        onCreated={() => {}}
+        config={config}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText('Composio key configured')).toBeTruthy());
+    expect(screen.getByText('GitHub authorization expired. Reconnect GitHub.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Connect GitHub' })).toBeTruthy();
+  });
+
   it('keeps GitHub repo links available and shows connected connector status', async () => {
-    const availableConnector: ConnectorDetail = {
+    const connectedConnector: ConnectorDetail = {
       id: 'github',
       name: 'GitHub',
       provider: 'Composio',
       category: 'Code',
-      status: 'available',
-      tools: [],
-    };
-    const connectedConnector: ConnectorDetail = {
-      ...availableConnector,
       status: 'connected',
+      tools: [],
       accountLabel: 'qiongyu1999',
     };
-    mocks.fetchConnectorDetail.mockResolvedValue(availableConnector);
+    mocks.fetchConnectorStatuses.mockResolvedValue({ github: { status: 'available' } });
     mocks.connectConnector.mockResolvedValue({
       connector: connectedConnector,
       auth: { kind: 'connected' },
@@ -1332,16 +1352,9 @@ describe('DesignSystemCreationFlow', () => {
   });
 
   it('hides Composio connection ids in the connected GitHub label', async () => {
-    const connectedConnector: ConnectorDetail = {
-      id: 'github',
-      name: 'GitHub',
-      provider: 'Composio',
-      category: 'Code',
-      status: 'connected',
-      accountLabel: 'ca_6U6mv_8IzMVR',
-      tools: [],
-    };
-    mocks.fetchConnectorDetail.mockResolvedValue(connectedConnector);
+    mocks.fetchConnectorStatuses.mockResolvedValue({
+      github: { status: 'connected', accountLabel: 'ca_6U6mv_8IzMVR' },
+    });
     const config = {
       composio: { apiKeyConfigured: true, apiKeyTail: 'uQEg' },
     } as AppConfig;
@@ -1369,7 +1382,7 @@ describe('DesignSystemCreationFlow', () => {
       status: 'available',
       tools: [],
     };
-    mocks.fetchConnectorDetail.mockResolvedValue(availableConnector);
+    mocks.fetchConnectorStatuses.mockResolvedValue({ github: { status: 'available' } });
     mocks.connectConnector.mockResolvedValue({
       connector: availableConnector,
       auth: {
@@ -1444,7 +1457,9 @@ describe('DesignSystemCreationFlow', () => {
         sourceFileName: system.id,
       },
     };
-    mocks.fetchConnectorDetail.mockResolvedValue(availableConnector);
+    mocks.fetchConnectorStatuses.mockResolvedValue({
+      github: { status: 'connected', accountLabel: 'qiongyu1999' },
+    });
     mocks.createDesignSystemDraft.mockResolvedValue(system);
     mocks.ensureDesignSystemWorkspace.mockResolvedValue({ project, files: [] });
     mocks.patchProject.mockResolvedValue({ ...project, pendingPrompt: 'Create this project as a design system.' });
@@ -1570,15 +1585,6 @@ describe('DesignSystemCreationFlow', () => {
   });
 
   it('does not leak Composio connected-account ids into the project source manifest', async () => {
-    const connectedConnector: ConnectorDetail = {
-      id: 'github',
-      name: 'GitHub',
-      provider: 'Composio',
-      category: 'Code',
-      status: 'connected',
-      accountLabel: 'ca_6U6mv_8IzMVR',
-      tools: [],
-    };
     const system: DesignSystemDetail = {
       id: 'user:github-internal-account-design-system',
       title: 'GitHub Internal Account Design System',
@@ -1606,7 +1612,9 @@ describe('DesignSystemCreationFlow', () => {
         sourceFileName: system.id,
       },
     };
-    mocks.fetchConnectorDetail.mockResolvedValue(connectedConnector);
+    mocks.fetchConnectorStatuses.mockResolvedValue({
+      github: { status: 'connected', accountLabel: 'ca_6U6mv_8IzMVR' },
+    });
     mocks.createDesignSystemDraft.mockResolvedValue(system);
     mocks.ensureDesignSystemWorkspace.mockResolvedValue({ project, files: [] });
     mocks.patchProject.mockResolvedValue({ ...project, pendingPrompt: 'Create this project as a design system.' });

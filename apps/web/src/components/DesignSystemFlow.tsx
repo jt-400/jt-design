@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ConnectorConnectResponse, ConnectorDetail } from '@open-design/contracts';
+import type { ConnectorConnectResponse, ConnectorDetail, ConnectorStatusResponse } from '@open-design/contracts';
 import { streamViaDaemon } from '../providers/daemon';
 import {
   connectConnector,
@@ -8,7 +8,7 @@ import {
   ensureDesignSystemWorkspace,
   fetchDesignSystemGenerationJob,
   fetchDesignSystem,
-  fetchConnectorDetail,
+  fetchConnectorStatuses,
   fetchProjectFileText,
   fetchProjectFiles,
   fetchProjectDesignSystemPackageAudit,
@@ -209,12 +209,15 @@ export function DesignSystemCreationFlow({
     setGithubConnectorLoading(true);
     setGithubConnectorError(null);
     try {
-      const { connector, timedOut } = await fetchConnectorDetailWithTimeout(GITHUB_CONNECTOR_ID);
+      const { connector, timedOut } = await fetchGithubConnectorStatusWithTimeout();
       if (githubConnectorRefreshId.current !== refreshId) return;
       setGithubConnector(connector);
       if (connector?.status === 'connected') {
         setGithubAuthorizationPending(false);
         setGithubAuthorizationUrl(null);
+      }
+      if (connector?.status === 'error' && connector.lastError) {
+        setGithubConnectorError(connector.lastError);
       }
       if (timedOut) {
         setGithubConnectorError(
@@ -2293,9 +2296,7 @@ function isGithubConnectorConnected(connector: ConnectorDetail | null): boolean 
   return connector?.status === 'connected';
 }
 
-async function fetchConnectorDetailWithTimeout(
-  connectorId: string,
-): Promise<{ connector: ConnectorDetail | null; timedOut: boolean }> {
+async function fetchGithubConnectorStatusWithTimeout(): Promise<{ connector: ConnectorDetail | null; timedOut: boolean }> {
   let timeoutId: number | undefined;
   let timedOut = false;
   try {
@@ -2305,14 +2306,30 @@ async function fetchConnectorDetailWithTimeout(
         resolve(null);
       }, GITHUB_CONNECTOR_STATUS_TIMEOUT_MS);
     });
-    const connector = await Promise.race([
-      fetchConnectorDetail(connectorId),
+    const statuses = await Promise.race([
+      fetchConnectorStatuses(),
       timeout,
     ]);
-    return { connector, timedOut };
+    return { connector: githubConnectorFromStatus(statuses?.[GITHUB_CONNECTOR_ID]), timedOut };
   } finally {
     if (timeoutId !== undefined) window.clearTimeout(timeoutId);
   }
+}
+
+function githubConnectorFromStatus(
+  status: ConnectorStatusResponse['statuses'][string] | undefined,
+): ConnectorDetail | null {
+  if (!status) return null;
+  return {
+    id: GITHUB_CONNECTOR_ID,
+    name: 'GitHub',
+    provider: 'composio',
+    category: 'developer tools',
+    status: status.status,
+    tools: [],
+    ...(status.accountLabel === undefined ? {} : { accountLabel: status.accountLabel }),
+    ...(status.lastError === undefined ? {} : { lastError: status.lastError }),
+  };
 }
 
 function isPendingConnectorAuth(auth: ConnectorConnectResponse['auth'] | undefined): boolean {
