@@ -162,6 +162,7 @@ interface Props {
   connectorsLoading?: boolean;
   onOpenConnectorsTab?: () => void;
   loading?: boolean;
+  initialTab?: CreateTab;
 }
 
 const TAB_LABEL_KEYS: Record<CreateTab, keyof Dict> = {
@@ -217,6 +218,7 @@ export function NewProjectPanel({
   connectorsLoading = false,
   onOpenConnectorsTab,
   loading = false,
+  initialTab = 'prototype',
 }: Props) {
   const t = useT();
   const analytics = useAnalytics();
@@ -232,7 +234,7 @@ export function NewProjectPanel({
   const [importFolderError, setImportFolderError] = useState<
     { message: string; details?: string } | null
   >(null);
-  const [tab, setTab] = useState<CreateTab>('prototype');
+  const [tab, setTab] = useState<CreateTab>(initialTab);
   // Media tab consolidates image / video / audio. The active surface picks
   // which set of options + skill resolution applies; submission still maps
   // back to the existing image/video/audio ProjectKind branches so the

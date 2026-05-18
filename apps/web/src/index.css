@@ -575,7 +575,7 @@ code {
   padding-left: 0;
   overflow: visible;
   contain: layout style;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
 }
 .workspace-tab {
   position: relative;
@@ -594,6 +594,7 @@ code {
   overflow: hidden;
   contain: layout style;
   transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
+  -webkit-app-region: no-drag;
 }
 .workspace-tab + .workspace-tab::before {
   content: '';
