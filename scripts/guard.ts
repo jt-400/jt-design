@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
+import { checkDesignSystemManifests } from "./check-design-system-manifests.ts";
 import { checkDesignSystemFlagParity } from "./check-design-system-flag-parity.ts";
 import {
   checkDesignSystemA1RequiredTokens,
@@ -704,6 +705,7 @@ const checks: GuardCheck[] = [
   { name: "web test layout", run: checkWebTestLayout },
   { name: "tools layout", run: checkToolsLayout },
   { name: "style policy", run: checkStylePolicy },
+  { name: "design system manifests", run: checkDesignSystemManifests },
   { name: "design system token-fixture sync", run: checkDesignSystemTokenFixtureSync },
   { name: "design system A1 required tokens", run: checkDesignSystemA1RequiredTokens },
   { name: "design system A2 required tokens", run: checkDesignSystemA2RequiredTokens },
