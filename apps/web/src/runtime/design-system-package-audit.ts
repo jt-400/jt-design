@@ -35,8 +35,11 @@ function targetedAuditRepairActions(issues: DesignSystemPackageAuditIssue[]): st
   if (hasAny('missing_skill_frontmatter', 'skill_missing_reuse_sections')) {
     actions.push('- Rewrite `SKILL.md` as a discoverable skill package with YAML frontmatter (`name`, `description`, `user-invocable`) and sections for What is inside, Source context, When to use this skill, How to use, and Design system highlights.');
   }
-  if (hasAny('readme_missing_product_overview', 'readme_missing_package_reuse_guide')) {
+  if (hasAny('readme_missing_product_overview', 'readme_missing_package_reuse_guide', 'readme_missing_preview_manifest')) {
     actions.push('- Rewrite `README.md` as a Claude Design package guide with Product Overview/Product Context, source/context references, Package Contents, preview-card manifest, preserved assets/fonts/build/source examples, `ui_kits/app/`, and a concrete reuse or review workflow.');
+  }
+  if (hasAny('readme_missing_preview_manifest')) {
+    actions.push('- Add a `## Preview Manifest` section to `README.md` that lists every generated `preview/*.html` card with the exact path, review purpose, and source-backed components or assets it demonstrates.');
   }
   if (hasAny('missing_source_component_examples', 'thin_source_component_examples')) {
     actions.push('- Copy real high-signal source snapshots into `source_examples/` or equivalent package source files; keep original component code substantial enough to inspect, not tiny generated stubs.');

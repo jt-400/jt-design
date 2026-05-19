@@ -116,6 +116,11 @@ describe('design system package audit helpers', () => {
         path: 'README.md',
       }, {
         severity: 'warning' as const,
+        code: 'readme_missing_preview_manifest',
+        message: 'README.md should list preview cards.',
+        path: 'README.md',
+      }, {
+        severity: 'warning' as const,
         code: 'missing_skill_frontmatter',
         message: 'SKILL.md should include YAML frontmatter.',
         path: 'SKILL.md',
@@ -123,7 +128,7 @@ describe('design system package audit helpers', () => {
     };
 
     expect(summarizeDesignSystemPackageAudit(failingAudit)).toContain(
-      'Package audit found 1 error and 4 warnings',
+      'Package audit found 1 error and 5 warnings',
     );
     expect(buildDesignSystemPackageAuditRepairPrompt(failingAudit)).toContain(
       'tools connectors design-system-package-audit --path . --fail-on-warnings',
@@ -151,6 +156,9 @@ describe('design system package audit helpers', () => {
     );
     expect(buildDesignSystemPackageAuditRepairPrompt(failingAudit)).toContain(
       'Rewrite `README.md` as a Claude Design package guide',
+    );
+    expect(buildDesignSystemPackageAuditRepairPrompt(failingAudit)).toContain(
+      'Add a `## Preview Manifest` section to `README.md`',
     );
     expect(buildDesignSystemPackageAuditRepairPrompt(failingAudit)).toContain(
       'copying originals from `context/.../files/build/...` into root `build/` byte-for-byte',
@@ -540,6 +548,18 @@ describe('DesignSystemCreationFlow', () => {
     expect(mocks.patchProject).toHaveBeenCalledWith(
       project.id,
       expect.objectContaining({
+        pendingPrompt: expect.stringContaining('concrete `## Preview Manifest` section'),
+      }),
+    );
+    expect(mocks.patchProject).toHaveBeenCalledWith(
+      project.id,
+      expect.objectContaining({
+        pendingPrompt: expect.stringContaining('lists each generated `preview/*.html` card by exact path'),
+      }),
+    );
+    expect(mocks.patchProject).toHaveBeenCalledWith(
+      project.id,
+      expect.objectContaining({
         pendingPrompt: expect.stringContaining('Do not replace captured source examples with tiny filename-only stubs'),
       }),
     );
@@ -684,6 +704,11 @@ describe('DesignSystemCreationFlow', () => {
       project.id,
       'context/source-context.md',
       expect.stringContaining('colors_and_type.css must bind those files with @font-face'),
+    );
+    expect(mocks.writeProjectTextFile).toHaveBeenCalledWith(
+      project.id,
+      'context/source-context.md',
+      expect.stringContaining('concrete `## Preview Manifest` listing every generated `preview/*.html` card'),
     );
     expect(mocks.writeProjectTextFile).toHaveBeenCalledWith(
       project.id,
