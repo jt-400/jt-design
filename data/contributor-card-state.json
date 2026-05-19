@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-19T02:12:41.216Z",
+  "generatedAt": "2026-05-19T02:27:35.565Z",
   "contributors": {
     "huyhoangnhh98": {
       "lastAnnouncedTier": "spark",
@@ -264,8 +264,9 @@
     },
     "samay-hash": {
       "lastAnnouncedTier": "spark",
-      "lastKnownScore": 1,
-      "lastCheckedAt": "2026-05-13T04:01:23.742Z",
+      "lastKnownScore": 36,
+      "lastCheckedAt": "2026-05-19T02:27:35.564Z",
+      "scoreVersion": "weighted-v1",
       "lastAnnouncedAt": "2026-05-13T04:01:23.742Z"
     },
     "alchemistklk": {
