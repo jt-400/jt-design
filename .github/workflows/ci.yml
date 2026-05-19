@@ -14,6 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -569,3 +570,75 @@ jobs:
             echo "$failures"
             exit 1
           fi
+
+  runtime_trace:
+    name: Runtime trace
+    needs:
+      - validate
+    if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Summarize workflow runtime
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          run_json="$RUNNER_TEMP/run.json"
+          gh run view "$RUN_ID" --json conclusion,createdAt,databaseId,displayTitle,event,headBranch,jobs,updatedAt,url > "$run_json"
+          jq -r '
+            def parse_ts: sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601;
+            def seconds($start; $end):
+              if ($start and $end) then (($end | parse_ts) - ($start | parse_ts)) else null end;
+            def fmt($seconds):
+              if $seconds == null then "n/a"
+              elif $seconds >= 60 then "\(((($seconds / 60) * 10 | round) / 10))m"
+              else "\(($seconds | round))s"
+              end;
+            def row($cells): "| \($cells | join(" | ")) |";
+
+            .jobs as $jobs |
+            [
+              "## Runtime trace",
+              "",
+              "Run: [\(.displayTitle)](\(.url))",
+              "Event: `\(.event)`",
+              "Branch: `\(.headBranch)`",
+              "Elapsed: \(fmt(seconds(.createdAt; .updatedAt)))",
+              "",
+              "### Jobs",
+              "| Job | Result | Duration | Slowest step |",
+              "| --- | --- | ---: | --- |",
+              (
+                $jobs
+                | sort_by(seconds(.startedAt; .completedAt) // 0)
+                | reverse
+                | .[]
+                | select(.conclusion != "skipped")
+                | (
+                    [(.steps // [])[] | select(.startedAt and .completedAt and .conclusion != "skipped") | {name, duration: seconds(.startedAt; .completedAt)}]
+                    | max_by(.duration // 0)
+                  ) as $slow
+                | row([.name, (.conclusion // .status), fmt(seconds(.startedAt; .completedAt)), "\($slow.name // "n/a") (\(fmt($slow.duration)))"])
+              ),
+              "",
+              "### Slowest steps",
+              "| Step | Job | Duration |",
+              "| --- | --- | ---: |",
+              (
+                [
+                  $jobs[] as $job
+                  | ($job.steps // [])[]
+                  | select(.startedAt and .completedAt and .conclusion != "skipped")
+                  | {job: $job.name, name, duration: seconds(.startedAt; .completedAt)}
+                ]
+                | sort_by(.duration // 0)
+                | reverse
+                | .[0:20][]
+                | row([.name, .job, fmt(.duration)])
+              )
+            ][]
+          ' "$run_json" >> "$GITHUB_STEP_SUMMARY"
