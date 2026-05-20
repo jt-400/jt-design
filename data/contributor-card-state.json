@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-20T01:11:15.606Z",
+  "generatedAt": "2026-05-20T02:03:21.339Z",
   "contributors": {
     "huyhoangnhh98": {
       "lastAnnouncedTier": "spark",
@@ -17,8 +17,9 @@
     },
     "sid-qin": {
       "lastAnnouncedTier": "node",
-      "lastKnownScore": 130,
-      "lastCheckedAt": "2026-05-13T11:42:43.670Z",
+      "lastKnownScore": 504,
+      "lastCheckedAt": "2026-05-20T02:03:21.339Z",
+      "scoreVersion": "weighted-v1",
       "lastAnnouncedAt": "2026-05-12T06:27:05.151Z"
     },
     "xxiaoxiong": {
