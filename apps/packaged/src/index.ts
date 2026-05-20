@@ -122,6 +122,7 @@ async function main(): Promise<void> {
     update: {
       currentVersion: config.appVersion,
       downloadRoot: paths.updateRoot,
+      installerObservationRoot: paths.installerObservationRoot,
     },
   });
 }

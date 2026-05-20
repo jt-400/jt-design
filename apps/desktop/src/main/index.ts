@@ -86,6 +86,7 @@ export type DesktopMainOptions = {
   update?: {
     currentVersion?: string | null;
     downloadRoot?: string | null;
+    installerObservationRoot?: string | null;
   };
 };
 
@@ -321,6 +322,8 @@ export async function runDesktopMain(
     {
       currentVersion: options.update?.currentVersion,
       downloadRoot: options.update?.downloadRoot,
+      installerObservationRoot: options.update?.installerObservationRoot,
+      namespace: runtime.namespace,
       runtimeBase: runtime.base,
       source: runtime.source,
     },

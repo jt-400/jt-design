@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
-import { readFile, realpath, writeFile } from "node:fs/promises";
+import { readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
@@ -20,6 +20,7 @@ import {
   DESKTOP_UPDATE_ENV,
   resolveDesktopUpdaterConfig,
 } from "../../src/main/updater.js";
+import { installerObservationSummaryPath } from "../../src/main/installer-observations.js";
 
 type FixtureServer = {
   artifactRequests: () => number;
@@ -192,6 +193,17 @@ function metadataResponse(version: string): Response {
 }
 
 describe("desktop updater", () => {
+  it("derives installer observation summary paths from safe flow ids only", () => {
+    const root = makeRoot();
+    try {
+      expect(installerObservationSummaryPath(root, "flow-1")).toBe(join(root, "flow-1", "summary.json"));
+      expect(() => installerObservationSummaryPath(root, "../escape")).toThrow(/flow_id/);
+      expect(() => installerObservationSummaryPath(root, "..")).toThrow(/flow_id/);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
   it("downloads, verifies, persists, and dry-runs opening a mac package", async () => {
     const root = makeRoot();
     const fixture = await createUpdaterFixture();
@@ -253,6 +265,57 @@ describe("desktop updater", () => {
       expect(installed.state).toBe(DESKTOP_UPDATE_STATES.DOWNLOADED);
       expect(installed.installResult?.dryRun).toBe(true);
       expect(installed.installResult?.path).toBe(checked.downloadPath);
+    } finally {
+      await fixture.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("writes a pending installer observation before opening the installer", async () => {
+    const root = makeRoot();
+    const observationRoot = join(root, "observations", "installer");
+    const fixture = await createUpdaterFixture();
+    const openedPaths: string[] = [];
+    try {
+      const updater = createDesktopUpdater(
+        {
+          arch: "arm64",
+          downloadRoot: join(root, "updates"),
+          env: {
+            ...updaterEnv(fixture.metadataUrl),
+            [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
+          },
+          installerObservationRoot: observationRoot,
+          namespace: "release",
+          source: SIDECAR_SOURCES.TOOLS_PACK,
+        },
+        { openPath: async (path) => {
+          openedPaths.push(path);
+          return "";
+        } },
+      );
+
+      const checked = await updater.checkForUpdates();
+      const installed = await updater.installUpdate();
+      const flowIds = await readdir(observationRoot);
+      const summary = JSON.parse(await readFile(join(observationRoot, flowIds[0] ?? "", "summary.json"), "utf8")) as Record<string, unknown>;
+
+      expect(installed.installResult?.path).toBe(checked.downloadPath);
+      expect(openedPaths).toEqual([checked.downloadPath]);
+      expect(flowIds).toHaveLength(1);
+      expect(summary).toMatchObject({
+        arch: "arm64",
+        artifactType: "dmg",
+        channel: "stable",
+        fromVersion: "1.0.0",
+        kind: "installer_apply_observation",
+        namespace: "release",
+        platform: "darwin",
+        reason: "installer_open_requested",
+        result: "pending",
+        schemaVersion: 1,
+        toVersion: "1.0.1",
+      });
     } finally {
       await fixture.close();
       rmSync(root, { force: true, recursive: true });

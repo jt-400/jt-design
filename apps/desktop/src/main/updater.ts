@@ -33,6 +33,13 @@ import {
   type SidecarSource,
 } from "@open-design/sidecar-proto";
 
+import {
+  markInstallerObservationOpenFailed,
+  writePendingInstallerObservation,
+  type InstallerObservationArtifactType,
+  type InstallerObservationHandle,
+} from "./installer-observations.js";
+
 export const DESKTOP_UPDATE_ENV = Object.freeze({
   ARCH: "OD_UPDATE_ARCH",
   AUTO_CHECK: "OD_UPDATE_AUTO_CHECK",
@@ -72,7 +79,9 @@ export type DesktopUpdaterConfigInput = {
   currentVersion?: string | null;
   downloadRoot?: string | null;
   env?: NodeJS.ProcessEnv;
+  installerObservationRoot?: string | null;
   mode?: DesktopUpdateMode;
+  namespace?: string | null;
   platform?: string;
   runtimeBase?: string | null;
   source: SidecarSource;
@@ -91,8 +100,10 @@ export type DesktopUpdaterConfig = {
   currentVersion: string;
   downloadRoot: string;
   enabled: boolean;
+  installerObservationRoot?: string;
   metadataUrl: string;
   mode: DesktopUpdateMode;
+  namespace?: string;
   openDryRun: boolean;
   platform: string;
   source: SidecarSource;
@@ -212,6 +223,19 @@ function normalizeDownloadRoot(value: string): string {
   return resolve(value);
 }
 
+function normalizeOptionalRoot(value: string | null | undefined, label: string): string | undefined {
+  if (value == null || value.length === 0) return undefined;
+  if (value.includes("\0")) throw new Error(`${label} must not contain null bytes`);
+  if (!isAbsolute(value)) throw new Error(`${label} must be absolute: ${value}`);
+  return resolve(value);
+}
+
+function normalizeOptionalNonEmpty(value: string | null | undefined): string | undefined {
+  if (value == null) return undefined;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
+
 function durationEnv(value: string | undefined, fallback: number, name: string): number {
   if (value == null || value.length === 0) return fallback;
   const parsed = Number(value);
@@ -240,6 +264,8 @@ export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): D
     input.appVersion ??
     "0.0.0";
   const channel = normalizeChannel(env[DESKTOP_UPDATE_ENV.CHANNEL], defaultChannelForVersion(currentVersion));
+  const installerObservationRoot = normalizeOptionalRoot(input.installerObservationRoot, "installer observation root");
+  const namespace = normalizeOptionalNonEmpty(input.namespace);
 
   return {
     arch: env[DESKTOP_UPDATE_ENV.ARCH] ?? input.arch ?? process.arch,
@@ -270,8 +296,10 @@ export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): D
     currentVersion,
     downloadRoot,
     enabled,
+    ...(installerObservationRoot == null ? {} : { installerObservationRoot }),
     metadataUrl: env[DESKTOP_UPDATE_ENV.METADATA_URL] ?? defaultMetadataUrl(channel),
     mode,
+    ...(namespace == null ? {} : { namespace }),
     openDryRun: isTruthyEnv(env[DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]) ?? false,
     platform: env[DESKTOP_UPDATE_ENV.PLATFORM] ?? input.platform ?? process.platform,
     source: input.source,
@@ -694,6 +722,11 @@ function selectedPackageLauncherArtifact(config: DesktopUpdaterConfig): {
       platformKey: selectedWinPlatformKey(config.arch),
     };
   }
+  return null;
+}
+
+function installerObservationArtifactType(value: string | undefined): InstallerObservationArtifactType | null {
+  if (value === "dmg" || value === "installer") return value;
   return null;
 }
 
@@ -1328,6 +1361,42 @@ export function createDesktopUpdater(
     }
   }
 
+  async function writeInstallObservation(attemptedAt: string): Promise<InstallerObservationHandle | null> {
+    if (config.openDryRun) return null;
+    if (config.installerObservationRoot == null || config.namespace == null) return null;
+    if (activeRelease == null) return null;
+    const artifactType = installerObservationArtifactType(activeRelease.ref.artifact.type);
+    if (artifactType == null) return null;
+    try {
+      return await writePendingInstallerObservation({
+        arch: activeRelease.ref.arch,
+        artifactType,
+        attemptedAt,
+        channel: activeRelease.ref.channel,
+        fromVersion: config.currentVersion,
+        namespace: config.namespace,
+        platform: config.platform,
+        root: config.installerObservationRoot,
+        toVersion: activeRelease.ref.version,
+      });
+    } catch (observationError) {
+      logger.warn("[open-design updater] failed to write installer observation", observationError);
+      return null;
+    }
+  }
+
+  async function markInstallObservationOpenFailed(
+    observation: InstallerObservationHandle | null,
+    failedAt: string,
+  ): Promise<void> {
+    if (observation == null) return;
+    try {
+      await markInstallerObservationOpenFailed(observation, failedAt);
+    } catch (observationError) {
+      logger.warn("[open-design updater] failed to update installer observation", observationError);
+    }
+  }
+
   async function installUpdate(): Promise<DesktopUpdateStatusSnapshot> {
     const unsupported = unsupportedStatus();
     if (unsupported != null) return unsupported;
@@ -1367,11 +1436,14 @@ export function createDesktopUpdater(
         }),
       );
     }
+    let observation: InstallerObservationHandle | null = null;
     try {
       const openedAt = now().toISOString();
+      observation = await writeInstallObservation(openedAt);
       if (!config.openDryRun) {
         const openError = await openPath(resolvedDownload);
         if (openError.length > 0) {
+          await markInstallObservationOpenFailed(observation, now().toISOString());
           return setState(DESKTOP_UPDATE_STATES.ERROR, createError("open-installer-failed", openError));
         }
       }
@@ -1392,6 +1464,7 @@ export function createDesktopUpdater(
       });
       return setState(DESKTOP_UPDATE_STATES.DOWNLOADED);
     } catch (installError) {
+      await markInstallObservationOpenFailed(observation, now().toISOString());
       return setState(
         DESKTOP_UPDATE_STATES.ERROR,
         createError("open-installer-failed", installError instanceof Error ? installError.message : String(installError)),

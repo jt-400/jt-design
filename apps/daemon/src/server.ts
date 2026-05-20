@@ -190,6 +190,7 @@ import {
   readAnalyticsContext,
   readPublicConfigResponse,
 } from './analytics.js';
+import { observePendingInstallerApplyAttempts } from './update-apply-observations.js';
 import {
   agentIdToTracking,
   deriveConfigureGlobals,
@@ -4163,6 +4164,15 @@ export async function startServer({
   void (async () => {
     try {
       cachedAppVersion = await readCurrentAppVersionInfo();
+      await observePendingInstallerApplyAttempts({
+        analytics: analyticsService,
+        appVersion: cachedAppVersion.version,
+        currentChannel: cachedAppVersion.channel,
+        currentVersion: cachedAppVersion.version,
+        dataRoot: RUNTIME_DATA_DIR,
+        logger: console,
+        namespace: process.env[SIDECAR_ENV.NAMESPACE] ?? SIDECAR_DEFAULTS.namespace,
+      });
     } catch {
       // Telemetry is best-effort; appVersion is omitted when unavailable.
     }

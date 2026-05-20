@@ -25,6 +25,8 @@ export type AnalyticsEventName =
   // Run lifecycle (daemon authoritative)
   | 'run_created'
   | 'run_finished'
+  // Packaged updater lifecycle
+  | 'update_apply_observed'
   // File manager
   | 'file_upload_result'
   // Artifact
@@ -1004,6 +1006,37 @@ export interface RunFinishedProps extends Omit<RunCreatedProps, 'area'> {
   total_duration_ms: number;
 }
 
+export type TrackingUpdateApplyResult = 'success' | 'not_applied' | 'unknown';
+
+export type TrackingUpdateApplyReason =
+  | 'app_version_matches'
+  | 'app_version_unchanged'
+  | 'expired'
+  | 'identity_mismatch';
+
+export type TrackingUpdateApplyElapsedBucket =
+  | 'lt_5m'
+  | '5m_1h'
+  | '1h_6h'
+  | '6h_24h'
+  | '1d_7d'
+  | 'gt_7d'
+  | 'unknown';
+
+export interface UpdateApplyObservedProps {
+  flow_id: string;
+  channel: 'stable' | 'beta';
+  namespace: string;
+  platform: string;
+  arch: string;
+  artifact_type: 'dmg' | 'installer';
+  from_version: string;
+  to_version: string;
+  result: TrackingUpdateApplyResult;
+  reason: TrackingUpdateApplyReason;
+  elapsed_bucket: TrackingUpdateApplyElapsedBucket;
+}
+
 export interface FileUploadResultProps {
   page_name: 'file_manager';
   area: 'file_manager';
@@ -1091,6 +1124,7 @@ export type AnalyticsEventPayload =
   | { event: 'plugin_replacement_result'; props: PluginReplacementResultProps }
   | { event: 'run_created'; props: RunCreatedProps }
   | { event: 'run_finished'; props: RunFinishedProps }
+  | { event: 'update_apply_observed'; props: UpdateApplyObservedProps }
   | { event: 'file_upload_result'; props: FileUploadResultProps }
   | { event: 'artifact_export_result'; props: ArtifactExportResultProps }
   | { event: 'feedback_submit_result'; props: FeedbackSubmitResultProps }
