@@ -796,18 +796,28 @@ describe('HomeView prompt handoff', () => {
       expect.anything(),
     ));
 
-    const rewrittenGoal = 'catalog internal research notes into a reusable knowledge workflow';
     const input = screen.getByTestId('home-hero-input') as HTMLTextAreaElement;
+    const goalInput = await screen.findByLabelText(/plugin goal/i);
+    fireEvent.change(goalInput, {
+      target: { value: 'turn support transcripts into triaged GitHub issues' },
+    });
+
+    await waitFor(() => {
+      expect(input.value).toContain('turn support transcripts into triaged GitHub issues');
+    });
+
+    const rewrittenGoal = 'catalog internal research notes into a reusable knowledge workflow';
     fireEvent.change(input, {
       target: {
         value: input.value.replace(
-          PLUGIN_AUTHORING_DEFAULT_GOAL,
+          'turn support transcripts into triaged GitHub issues',
           rewrittenGoal,
         ),
       },
     });
     await waitFor(() => {
-      expect(input.value).toContain(rewrittenGoal);
+      expect((screen.getByLabelText(/plugin goal/i) as HTMLInputElement).value)
+        .toBe(rewrittenGoal);
     });
     fireEvent.click(screen.getByTestId('home-hero-submit'));
 
