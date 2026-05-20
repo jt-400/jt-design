@@ -130,61 +130,129 @@
   box-shadow: 0 0 0 3px var(--accent-tint);
 }
 
-/* Manus-style example-prompt row that sits between the artifact-type
-   tabs and the input card. The row exposes the curated `useCase.query`
-   from a handful of representative plugins so first-time users can
-   one-click a polished starter prompt instead of staring at an empty
-   textarea. Each chip is a thin pill (lighter than the type tabs to
-   sit subordinate to the active artifact intent) with a tooltip-only
-   preview of the resolved query. */
+/* Manus-style example-prompt panel. Sits OUTSIDE the input card,
+   below the migrate rail ("Create plugin / From Figma / From folder /
+   From template") and above the Recent projects strip. Only shown
+   after the user picks a type chip; closing the X dismisses the
+   panel until they pick a different chip. The wrapper layers the
+   shared `.accordion-collapsible` motion class so opening/closing
+   slides height + fade in 200ms / 140ms with the project's standard
+   ease-out curve. The panel itself is a centered 720px column of
+   cards so it doesn't widen past the composer above. */
 .home-hero__examples {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
   width: 100%;
   max-width: 720px;
   padding: 0 12px;
-  margin: -8px 0 4px;
+  margin-top: 4px;
 }
-.home-hero__example-chip {
+.home-hero__examples-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+}
+.home-hero__examples-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.home-hero__examples-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+.home-hero__examples-close {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+  background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
   cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  transition: color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.home-hero__example-chip:hover:not(:disabled) {
+.home-hero__examples-close:hover:not(:disabled) {
   color: var(--text-strong);
-  background: var(--bg-panel);
-  border-color: var(--border-strong, var(--border));
+  background: var(--bg-subtle);
+  border-color: var(--border);
 }
-.home-hero__example-chip:disabled {
+.home-hero__examples-close:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0;
+  pointer-events: none;
 }
-.home-hero__example-chip:focus-visible {
+.home-hero__examples-close:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-tint);
 }
-.home-hero__example-icon {
-  flex-shrink: 0;
-  opacity: 0.7;
+.home-hero__examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
 }
-.home-hero__example-label {
-  white-space: nowrap;
+.home-hero__example-card {
+  appearance: none;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+  padding: 10px 28px 10px 12px;
+  min-height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  cursor: pointer;
+  transition: color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.home-hero__example-card:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--border));
+  background: color-mix(in srgb, var(--bg-panel) 92%, var(--bg-subtle));
+}
+.home-hero__example-card:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.home-hero__example-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.home-hero__example-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+.home-hero__example-card-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
+  color: var(--text);
+  font-weight: 500;
+}
+.home-hero__example-card-arrow {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.home-hero__example-card:hover:not(:disabled) .home-hero__example-card-arrow {
+  color: var(--text-strong);
+  opacity: 1;
 }
 
 .home-hero__input-card {
@@ -852,12 +920,11 @@
 }
 .home-hero__attach {
   appearance: none;
-  /* Match the submit button size and make the paper-clip glyph
-     readable at typical viewing distance. The previous 32px / 14px
-     glyph combo rendered the icon at roughly 11–12px after stroke
-     antialiasing and washed out against the white card. */
-  width: 38px;
-  height: 38px;
+  /* All composer-foot controls (attach, working-dir chip, design-system
+     chip, mic, submit) share a 32 px outer height so the row reads as
+     one continuous strip — the user's brief: 整体高度对齐, 显得精致一些. */
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   border: 1px solid var(--border);
   border-radius: 50%;
@@ -878,11 +945,11 @@
 }
 .home-hero__submit {
   appearance: none;
-  /* Larger send button so the arrow glyph reads at typical viewing
-     distance and the primary call-to-action carries enough visual
-     weight against the surrounding muted controls. */
-  width: 38px;
-  height: 38px;
+  /* Sized to match the surrounding composer-foot controls so the
+     control strip reads as one harmonized row instead of mismatched
+     pills and circles. */
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: var(--accent);

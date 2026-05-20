@@ -7,13 +7,22 @@
 //     user picks (POST /api/projects/:id/working-dir).
 //   - Pick from recently-used directories (persisted in localStorage).
 //
-// The pill is purely presentational; the daemon owns the security
-// model. When the daemon's trusted-picker gate is active we have to
-// route through the desktop-import token path — for now the renderer
-// just passes through whatever path `openFolderDialog` returns and
-// surfaces the daemon's error message if the gate refuses.
+// In packaged desktop builds the daemon's `desktopAuthGateActive` flag
+// is sticky, so `POST /api/projects/:id/working-dir` refuses tokenless
+// requests. We route through the host bridge's atomic
+// `pickAndReplaceWorkingDir(projectId)` IPC, which performs the picker,
+// HMAC mint, and POST in a single main-process transaction — same
+// trust boundary as `pickAndImport` (PR #974). The renderer never sees
+// the raw path or the token. When no host bridge is present (web /
+// dev), we fall back to the older `openFolderDialog` + bare
+// `replaceProjectWorkingDir` path, which only works when the gate is
+// dormant.
 
 import { useEffect, useRef, useState } from 'react';
+import {
+  isOpenDesignHostAvailable,
+  pickAndReplaceHostProjectWorkingDir,
+} from '@open-design/host';
 import {
   openFolderDialog,
   replaceProjectWorkingDir,
@@ -128,6 +137,32 @@ export function WorkingDirPill({ projectId, resolvedDir: propResolvedDir, onRepl
   }
 
   async function handlePickDir() {
+    // Packaged desktop: route through the host bridge so the picker,
+    // HMAC mint, and POST happen atomically in the main process. The
+    // gate-active daemon refuses the renderer-driven path.
+    if (isOpenDesignHostAvailable()) {
+      setError(null);
+      setBusy(true);
+      setOpen(false);
+      try {
+        const result = await pickAndReplaceHostProjectWorkingDir(projectId);
+        if (result.ok) {
+          pushRecent(result.baseDir);
+          onReplaced?.(result.baseDir);
+          return;
+        }
+        if (!('canceled' in result) || !result.canceled) {
+          const reason = 'reason' in result && typeof result.reason === 'string' && result.reason.length > 0
+            ? result.reason
+            : '替换工作目录失败';
+          setError(reason);
+        }
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    // Web / dev fallback: gate dormant, OK to use the renderer-driven path.
     const picked = await openFolderDialog();
     if (!picked) {
       setError('Folder picker unavailable in this build. Run the desktop app to pick a folder.');
@@ -139,6 +174,11 @@ export function WorkingDirPill({ projectId, resolvedDir: propResolvedDir, onRepl
   const shortPath = resolvedDir
     ? resolvedDir.split('/').filter(Boolean).slice(-1)[0] ?? resolvedDir
     : null;
+  // The trust gate refuses HMAC tokens for any baseDir the picker did
+  // not produce in the current click — recents come from localStorage,
+  // which a compromised renderer can rewrite. Hide the list in packaged
+  // desktop where the gate is active.
+  const showRecents = !isOpenDesignHostAvailable();
 
   return (
     <div
@@ -192,7 +232,7 @@ export function WorkingDirPill({ projectId, resolvedDir: propResolvedDir, onRepl
             <Icon name="folder" size={12} />
             <span>清空并替换目录…</span>
           </button>
-          {recents.filter((r) => r !== resolvedDir).length > 0 ? (
+          {showRecents && recents.filter((r) => r !== resolvedDir).length > 0 ? (
             <>
               <div className="working-dir-pill-menu-divider" />
               <div className="working-dir-pill-menu-section">最近使用的目录</div>

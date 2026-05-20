@@ -72,6 +72,7 @@ export const SIDECAR_MESSAGES = Object.freeze({
   CONSOLE: "console",
   EVAL: "eval",
   EXPORT_PDF: "export-pdf",
+  MINT_IMPORT_TOKEN: "mint-import-token",
   REGISTER_DESKTOP_AUTH: "register-desktop-auth",
   SCREENSHOT: "screenshot",
   SHUTDOWN: "shutdown",
@@ -354,10 +355,40 @@ export type RegisterDesktopAuthResult = {
   accepted: true;
 };
 
+/**
+ * Sent over the daemon's namespace-scoped IPC socket to request a one-shot
+ * HMAC token bound to `baseDir`. The daemon mints the token from the
+ * secret it received via REGISTER_DESKTOP_AUTH; callers can then POST
+ * `/api/projects/:id/working-dir` (or `/api/import/folder`) with the
+ * `X-OD-Desktop-Import-Token` header.
+ *
+ * Trust model: the IPC socket lives at
+ * `/tmp/open-design/ipc/<namespace>/daemon.sock` with default user-only
+ * filesystem permissions, so anyone connecting is already running as the
+ * same user. Minting a token does not escalate privilege beyond what the
+ * caller could do on disk anyway, but it does let local CLI tooling
+ * (`od project working-dir --dir`) drive the same trust-gated endpoints
+ * the renderer goes through — closing the gap where the gate would 403
+ * the CLI even though it is user-trusted.
+ */
+export type MintImportTokenInput = {
+  baseDir: string;
+};
+
+export type MintImportTokenMessage = {
+  input: MintImportTokenInput;
+  type: typeof SIDECAR_MESSAGES.MINT_IMPORT_TOKEN;
+};
+
+export type MintImportTokenResult =
+  | { ok: true; token: string }
+  | { ok: false; reason: string };
+
 export type DaemonSidecarMessage =
   | SidecarStatusMessage
   | SidecarShutdownMessage
-  | RegisterDesktopAuthMessage;
+  | RegisterDesktopAuthMessage
+  | MintImportTokenMessage;
 export type WebSidecarMessage = SidecarStatusMessage | SidecarShutdownMessage;
 export type DesktopSidecarMessage =
   | SidecarStatusMessage
@@ -549,6 +580,16 @@ function normalizeRegisterDesktopAuthInput(input: unknown): RegisterDesktopAuthI
   return { secret };
 }
 
+function normalizeMintImportTokenInput(input: unknown): MintImportTokenInput {
+  const value = assertObject(input, "mint-import-token input");
+  assertKnownKeys(value, ["baseDir"], "mint-import-token input");
+  const baseDir = normalizeNonEmptyString(value.baseDir, "mint-import-token baseDir");
+  // Loose validation: the daemon trim-and-realpath's the requested
+  // path before signing, so we accept any non-empty string here. The
+  // signed token binds to the trimmed string exactly.
+  return { baseDir };
+}
+
 function normalizeBoolean(value: unknown, label: string): boolean {
   if (typeof value !== "boolean") throw new Error(`${label} must be a boolean`);
   return value;
@@ -596,6 +637,10 @@ export function normalizeDaemonSidecarMessage(input: unknown): DaemonSidecarMess
   if (type === SIDECAR_MESSAGES.REGISTER_DESKTOP_AUTH) {
     assertKnownKeys(value, ["input", "type"], "daemon sidecar message");
     return { input: normalizeRegisterDesktopAuthInput(value.input), type };
+  }
+  if (type === SIDECAR_MESSAGES.MINT_IMPORT_TOKEN) {
+    assertKnownKeys(value, ["input", "type"], "daemon sidecar message");
+    return { input: normalizeMintImportTokenInput(value.input), type };
   }
   throw new SidecarContractError(SIDECAR_ERROR_CODES.UNKNOWN_MESSAGE, `unknown daemon sidecar message: ${type}`);
 }

@@ -62,6 +62,7 @@ export function HomeHeroSettingsChips({
   const [hoveredDs, setHoveredDs] = useState<DesignSystemSummary | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [fullscreenPreview, setFullscreenPreview] = useState(false);
   const dsWrapRef = useRef<HTMLDivElement | null>(null);
   const dsInputRef = useRef<HTMLInputElement | null>(null);
   const [dirError, setDirError] = useState<string | null>(null);
@@ -92,8 +93,18 @@ export function HomeHeroSettingsChips({
     } else {
       setDsQuery('');
       setHoveredDs(null);
+      setFullscreenPreview(false);
     }
   }, [dsOpen]);
+
+  useEffect(() => {
+    if (!fullscreenPreview) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFullscreenPreview(false);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [fullscreenPreview]);
 
   const previewTarget = hoveredDs ?? selectedDs ?? null;
   useEffect(() => {
@@ -288,6 +299,18 @@ export function HomeHeroSettingsChips({
                       {previewTarget.category ? (
                         <span className="home-hero__design-system-preview-cat">{previewTarget.category}</span>
                       ) : null}
+                      {previewHtml ? (
+                        <button
+                          type="button"
+                          className="home-hero__design-system-preview-expand"
+                          data-testid="home-hero-design-system-preview-expand"
+                          onClick={() => setFullscreenPreview(true)}
+                          title="全屏预览"
+                          aria-label="全屏预览"
+                        >
+                          <Icon name="external-link" size={13} />
+                        </button>
+                      ) : null}
                     </div>
                     {previewTarget.summary ? (
                       <p className="home-hero__design-system-preview-summary">
@@ -337,6 +360,49 @@ export function HomeHeroSettingsChips({
       {dirError ? (
         <span className="home-hero__setting-hint">{dirError}</span>
       ) : null}
+      {fullscreenPreview && previewTarget && previewHtml && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="home-hero__design-system-fullscreen"
+              role="dialog"
+              aria-label={`${previewTarget.title} 全屏预览`}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setFullscreenPreview(false);
+                }
+              }}
+            >
+              <div className="home-hero__design-system-fullscreen-frame">
+                <div className="home-hero__design-system-fullscreen-head">
+                  <div className="home-hero__design-system-fullscreen-title">
+                    <strong>{previewTarget.title}</strong>
+                    {previewTarget.category ? (
+                      <span className="home-hero__design-system-preview-cat">
+                        {previewTarget.category}
+                      </span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="home-hero__design-system-fullscreen-close"
+                    onClick={() => setFullscreenPreview(false)}
+                    aria-label="关闭全屏预览"
+                    title="关闭 (Esc)"
+                  >
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+                <iframe
+                  className="home-hero__design-system-fullscreen-iframe"
+                  srcDoc={previewHtml}
+                  sandbox="allow-same-origin"
+                  title={`${previewTarget.title} fullscreen preview`}
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

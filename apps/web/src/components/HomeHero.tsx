@@ -32,7 +32,6 @@ import type {
 import type { SkillSummary } from '../types';
 import { HomeHeroSettingsChips } from './HomeHeroSettingsChips';
 import { Icon, type IconName } from './Icon';
-import { MicButton } from './MicButton';
 import { PluginInputsForm } from './PluginInputsForm';
 import {
   chipsForGroup,
@@ -89,12 +88,19 @@ interface Props {
   onPickMcp?: (server: McpServerConfig, nextPrompt: string) => void;
   onPickConnector?: (connector: ConnectorDetail, nextPrompt: string) => void;
   onPickChip: (chip: HomeHeroChip) => void;
-  // Manus-style example-prompt suggestions. Each entry is a plugin
-  // whose `od.useCase.query` we surface as a one-click prompt seed.
-  // HomeView decides the slice (matching the active chip, or featured
-  // when no chip is picked) and how many; this row just renders.
-  examplePlugins?: InstalledPluginRecord[];
+  // Manus-style example-prompt suggestions. Each entry carries both
+  // the source plugin (we still dispatch the existing
+  // `requestPluginContextUse(record, 'use-with-query')` path on click)
+  // and a pre-resolved, locale-aware preview of the prompt the
+  // textarea will receive, so the card body shows the actual sentence
+  // the user is about to send. HomeView decides the slice (matching
+  // the active chip), how many, and whether the panel should be
+  // visible (chip selected + not dismissed). The panel stays mounted
+  // either way so the accordion exit animation runs on close.
+  exampleSuggestions?: ExampleSuggestion[];
+  showExamples?: boolean;
   onPickExample?: (record: InstalledPluginRecord) => void;
+  onDismissExamples?: () => void;
   contextItemCount: number;
   error: string | null;
   // Stage 1 of the home settings strip (image 1 of the brief): the
@@ -170,8 +176,10 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
     onPickMcp = () => undefined,
     onPickConnector = () => undefined,
     onPickChip,
-    examplePlugins = [],
+    exampleSuggestions = [],
+    showExamples = false,
     onPickExample = () => undefined,
+    onDismissExamples = () => undefined,
     contextItemCount,
     error,
     workingDir = null,
@@ -498,14 +506,6 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
         pluginsLoading={pluginsLoading}
         onPickChip={onPickChip}
       />
-
-      {examplePlugins.length > 0 ? (
-        <ExamplePromptRow
-          plugins={examplePlugins}
-          onPick={onPickExample}
-          disabled={pluginsLoading || pendingPluginId !== null}
-        />
-      ) : null}
 
       <div
         className={`home-hero__input-card${dragActive ? ' is-drag-active' : ''}`}
@@ -899,7 +899,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
               title={t('chat.attachAria')}
               aria-label={t('chat.attachAria')}
             >
-              <Icon name="attach" size={18} />
+              <Icon name="attach" size={15} />
             </button>
             {onChangeWorkingDir && onChangeDesignSystemId ? (
               <HomeHeroSettingsChips
@@ -914,16 +914,6 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
             ) : null}
           </div>
           <div className="home-hero__foot-right">
-            <MicButton
-              className="home-hero__mic"
-              onCommit={(text) => {
-                const trimmed = text.trim();
-                if (trimmed.length === 0) return;
-                const sep =
-                  prompt.length === 0 || /\s$/.test(prompt) ? '' : ' ';
-                onPromptChange(`${prompt}${sep}${trimmed}`);
-              }}
-            />
             <button
               type="button"
               className="home-hero__submit"
@@ -933,7 +923,7 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
               title={canSubmit ? t('homeHero.run') : t('homeHero.typeSomethingToRun')}
               aria-label={t('homeHero.run')}
             >
-              <Icon name="arrow-up" size={22} />
+              <Icon name="arrow-up" size={17} />
             </button>
           </div>
         </div>
@@ -954,6 +944,18 @@ export const HomeHero = forwardRef<HTMLTextAreaElement, Props>(function HomeHero
           onPickChip={onPickChip}
         />
       </div>
+
+      {/* Always render the panel; toggle visibility via accordion class
+          so the exit animation runs on dismiss/chip-change. Hidden
+          when no chip is picked or when the user closed it for the
+          current chip. */}
+      <ExamplePromptPanel
+        suggestions={exampleSuggestions}
+        open={showExamples}
+        onPick={onPickExample}
+        onDismiss={onDismissExamples}
+        disabled={pluginsLoading || pendingPluginId !== null}
+      />
 
       {error ? (
         <div role="alert" className="home-hero__error">
@@ -1602,48 +1604,86 @@ function TypeTabBar({
   );
 }
 
-interface ExamplePromptRowProps {
-  plugins: InstalledPluginRecord[];
+// Each suggestion carries both the source plugin (so click can route
+// through the same `requestPluginContextUse(record, 'use-with-query')`
+// path the plugin card menu uses) and a pre-rendered, locale-aware
+// preview the card displays. HomeView resolves the preview through
+// the same renderer it'd use on submit, so the card body is exactly
+// the sentence the user is about to send.
+export interface ExampleSuggestion {
+  plugin: InstalledPluginRecord;
+  preview: string;
+}
+
+interface ExamplePromptPanelProps {
+  suggestions: ExampleSuggestion[];
+  open: boolean;
   onPick: (record: InstalledPluginRecord) => void;
+  onDismiss: () => void;
   disabled: boolean;
 }
 
-// Manus-style example-prompt row that sits between the artifact-type
-// chips and the prompt textarea. Each chip carries a single plugin's
-// rendered `useCase.query` as its tooltip and, on click, hands the
-// record to the parent which dispatches the existing
-// `requestPluginContextUse(record, 'use-with-query')` path — the same
-// route the "Use with query" item under each plugin card uses. The
-// label is the plugin title trimmed to fit a single row; the tooltip
-// shows the resolved query so the user can preview before clicking.
-function ExamplePromptRow({ plugins, onPick, disabled }: ExamplePromptRowProps) {
-  if (plugins.length === 0) return null;
+// Manus-style suggestion panel. Sits below the composer card + migrate
+// rail and surfaces 3-4 representative `useCase.query` previews as
+// content-bearing cards (not chip pills). The panel stays mounted so
+// the accordion exit animation runs on dismiss; `.accordion-collapsible
+// .open` toggles visibility per the shared motion contract in
+// `apps/web/src/index.css`. A small close button hides the panel for
+// the current chip; switching chips re-arms it (state lives in
+// HomeView).
+function ExamplePromptPanel({
+  suggestions,
+  open,
+  onPick,
+  onDismiss,
+  disabled,
+}: ExamplePromptPanelProps) {
+  const hasContent = suggestions.length > 0;
+  const isOpen = open && hasContent;
   return (
     <div
-      className="home-hero__examples"
-      role="list"
-      aria-label="Example prompts"
+      className={`home-hero__examples accordion-collapsible${isOpen ? ' open' : ''}`}
+      aria-hidden={isOpen ? undefined : true}
       data-testid="home-hero-example-prompts"
     >
-      {plugins.map((plugin) => {
-        const title = plugin.title || plugin.manifest?.name || plugin.id;
-        const tooltip = getPluginQueryPreview(plugin) || title;
-        return (
-          <button
-            key={plugin.id}
-            type="button"
-            role="listitem"
-            className="home-hero__example-chip"
-            data-testid={`home-hero-example-${plugin.id}`}
-            onClick={() => onPick(plugin)}
-            disabled={disabled}
-            title={tooltip}
-          >
-            <Icon name="sparkles" size={12} className="home-hero__example-icon" />
-            <span className="home-hero__example-label">{title}</span>
-          </button>
-        );
-      })}
+      <div className="accordion-collapsible-inner">
+        <section className="home-hero__examples-panel">
+          <header className="home-hero__examples-head">
+            <span className="home-hero__examples-title">Example prompts</span>
+            <button
+              type="button"
+              className="home-hero__examples-close"
+              onClick={onDismiss}
+              aria-label="Dismiss example prompts"
+              data-testid="home-hero-example-dismiss"
+              disabled={disabled || !isOpen}
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </header>
+          <div className="home-hero__examples-grid" role="list">
+            {suggestions.map(({ plugin, preview }) => (
+              <button
+                key={plugin.id}
+                type="button"
+                role="listitem"
+                className="home-hero__example-card"
+                data-testid={`home-hero-example-${plugin.id}`}
+                onClick={() => onPick(plugin)}
+                disabled={disabled || !isOpen}
+                title={preview}
+              >
+                <span className="home-hero__example-card-body">{preview}</span>
+                <Icon
+                  name="arrow-up"
+                  size={12}
+                  className="home-hero__example-card-arrow"
+                />
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

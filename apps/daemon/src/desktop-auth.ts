@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 let desktopAuthSecret: Buffer | null = null;
 let desktopAuthEverRegistered = process.env.OD_REQUIRE_DESKTOP_AUTH === '1';
@@ -54,6 +54,33 @@ export function signDesktopImportToken(
     .update(`${baseDir}\n${options.nonce}\n${options.exp}`)
     .digest('base64url');
   return [options.nonce, options.exp, signature].join(DESKTOP_IMPORT_TOKEN_FIELD_SEP);
+}
+
+/**
+ * Mints a fresh HMAC token bound to `baseDir` using the secret the
+ * desktop main process registered. Returns null when no secret is
+ * registered (web-only deployments don't need tokens) and a structured
+ * error when the gate is sticky-active but the secret bytes have been
+ * cleared (matches the sticky-fail-closed contract of the HTTP route).
+ *
+ * The TTL matches the daemon's HTTP verifier so callers get the same
+ * usable window. The token shape is identical to the one the desktop
+ * main process produces, so the daemon's existing
+ * `verifyDesktopImportToken` accepts it transparently.
+ */
+export function mintImportTokenFromCurrentSecret(baseDir: string):
+  | { ok: true; token: string }
+  | { ok: false; reason: string }
+  | null {
+  if (desktopAuthSecret == null) {
+    if (desktopAuthEverRegistered) {
+      return { ok: false, reason: 'desktop auth secret cleared' };
+    }
+    return null;
+  }
+  const nonce = randomBytes(16).toString('base64url');
+  const exp = new Date(Date.now() + DESKTOP_IMPORT_TOKEN_TTL_MS).toISOString();
+  return { ok: true, token: signDesktopImportToken(desktopAuthSecret, baseDir, { nonce, exp }) };
 }
 
 export type DesktopImportTokenVerification =
