@@ -121,7 +121,7 @@ function orbitLocaleConflictError(activeLocale: string | null, requestedLocale: 
 function normalizeOrbitLocale(locale: string | null | undefined): string | null {
   if (typeof locale !== 'string') return null;
   const normalized = locale.trim();
-  if (!normalized) return null;
+  if (!normalized) throw orbitLocaleError(normalized);
   if (!SUPPORTED_ORBIT_LOCALES.has(normalized as SupportedOrbitLocale)) {
     throw orbitLocaleError(normalized);
   }

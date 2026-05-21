@@ -228,6 +228,56 @@ describe('OrbitService', () => {
     }
   });
 
+  it('rejects empty-string manual run locales before building prompts', async () => {
+    const dataDir = await mkdtemp(path.join(os.tmpdir(), 'orbit-test-'));
+    try {
+      const service = new OrbitService(dataDir);
+      const runHandler = vi.fn(async () => ({
+        projectId: 'project-1',
+        agentRunId: 'agent-1',
+        completion: Promise.resolve({
+          agentRunId: 'agent-1',
+          status: 'succeeded' as const,
+        }),
+      }));
+      service.setRunHandler(runHandler);
+
+      await expect(service.start('manual', { locale: '' }))
+        .rejects.toMatchObject({
+          message: 'unsupported orbit locale: ',
+          status: 400,
+        });
+      expect(runHandler).not.toHaveBeenCalled();
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects whitespace-only manual run locales before building prompts', async () => {
+    const dataDir = await mkdtemp(path.join(os.tmpdir(), 'orbit-test-'));
+    try {
+      const service = new OrbitService(dataDir);
+      const runHandler = vi.fn(async () => ({
+        projectId: 'project-1',
+        agentRunId: 'agent-1',
+        completion: Promise.resolve({
+          agentRunId: 'agent-1',
+          status: 'succeeded' as const,
+        }),
+      }));
+      service.setRunHandler(runHandler);
+
+      await expect(service.start('manual', { locale: '   ' }))
+        .rejects.toMatchObject({
+          message: 'unsupported orbit locale: ',
+          status: 400,
+        });
+      expect(runHandler).not.toHaveBeenCalled();
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects unsupported locales before reusing a starting manual run', async () => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'orbit-test-'));
     try {

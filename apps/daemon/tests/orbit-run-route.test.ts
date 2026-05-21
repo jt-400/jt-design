@@ -44,4 +44,30 @@ describe('/api/orbit/run', () => {
       error: 'orbit run locale must be a string or null',
     });
   });
+
+  it('rejects empty-string locales with HTTP 400', async () => {
+    const response = await fetch(`${baseUrl}/api/orbit/run`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ locale: '' }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'unsupported orbit locale: ',
+    });
+  });
+
+  it('rejects whitespace-only locales with HTTP 400', async () => {
+    const response = await fetch(`${baseUrl}/api/orbit/run`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ locale: '   ' }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'unsupported orbit locale: ',
+    });
+  });
 });
