@@ -37,6 +37,7 @@ import type { InspectOverrideMap } from '../../src/components/FileViewer';
 import type { LiveArtifact, LiveArtifactWorkspaceEntry, PreviewComment, ProjectFile } from '../../src/types';
 import { I18nProvider } from '../../src/i18n';
 import type { Dict } from '../../src/i18n/types';
+import { readExpandedIndexCss } from '../helpers/read-expanded-css';
 
 afterEach(() => {
   cleanup();
@@ -77,6 +78,14 @@ function srcDocActivationMessages(calls: readonly (readonly unknown[])[]) {
 }
 
 describe('FileViewer preview scale', () => {
+  it('keeps file viewer selectors in the effective global stylesheet', () => {
+    const css = readExpandedIndexCss();
+
+    expect(css).toContain('.viewer');
+    expect(css).toContain('.viewer-toolbar');
+    expect(css).toContain('.viewer-action');
+  });
+
   it('uses the requested zoom for desktop preview overlays', () => {
     expect(effectivePreviewScale('desktop', 1.5, { width: 320, height: 480 })).toBe(1.5);
   });
@@ -2375,14 +2384,14 @@ function baseLiveArtifactWorkspaceEntry(
 
 describe('LiveArtifactViewer', () => {
   it('hides inactive live previews even when a device viewport sets display', () => {
-    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8');
+    const css = readExpandedIndexCss();
     const rule = css.match(/\.live-artifact-preview-layer\.preview-viewport\[data-active='false'\]\s*\{[^}]+\}/)?.[0] ?? '';
 
     expect(rule).toContain('display: none;');
   });
 
   it('keeps the presentation exit button aligned with preview chrome spacing', () => {
-    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8');
+    const css = readExpandedIndexCss();
     const rule = css.match(/\.present-exit\s*\{[^}]+\}/)?.[0] ?? '';
 
     expect(rule).toContain('top: calc(env(safe-area-inset-top, 0px) + 20px);');
