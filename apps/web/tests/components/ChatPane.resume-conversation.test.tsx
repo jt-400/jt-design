@@ -54,17 +54,14 @@ function renderChatPane(
 }
 
 describe('ChatPane resume-conversation control', () => {
-  it('renders the resume button inside the header actions, next to new-conversation', () => {
-    // The control must sit in the same action cluster as "New conversation"
-    // so users discover it where they already manage conversations.
+  it('does not render the resume control in the chat header', () => {
+    // The old header control reused the reload icon, which reads as a broken
+    // chat refresh button. Keep the header action cluster free of that affordance.
     renderChatPane({ messages: transcriptMessages, onResumeConversation: vi.fn() });
 
-    const resume = screen.getByTestId('resume-conversation');
     const newConv = screen.getByTestId('new-conversation');
-    expect(resume.closest('.chat-header-actions')).not.toBeNull();
-    expect(newConv.closest('.chat-header-actions')).toBe(
-      resume.closest('.chat-header-actions'),
-    );
+    expect(newConv.closest('.chat-header-actions')).not.toBeNull();
+    expect(screen.queryByTestId('resume-conversation')).toBeNull();
   });
 
   it('omits the resume button when no handler is wired', () => {
@@ -81,17 +78,7 @@ describe('ChatPane resume-conversation control', () => {
     expect(screen.queryByTestId('resume-conversation')).toBeNull();
   });
 
-  it('invokes onResumeConversation when clicked', () => {
-    const onResumeConversation = vi.fn();
-    renderChatPane({ messages: transcriptMessages, onResumeConversation });
-
-    screen.getByTestId('resume-conversation').click();
-    expect(onResumeConversation).toHaveBeenCalledTimes(1);
-  });
-
-  it('disables the button — and ignores clicks — while resumeConversationDisabled is set', () => {
-    // Disabled covers mid-stream / empty-transcript: a click then must be
-    // a no-op, not a stray handoff request.
+  it('keeps the header clean while resumeConversationDisabled is set', () => {
     const onResumeConversation = vi.fn();
     renderChatPane({
       messages: transcriptMessages,
@@ -99,9 +86,7 @@ describe('ChatPane resume-conversation control', () => {
       resumeConversationDisabled: true,
     });
 
-    const resume = screen.getByTestId('resume-conversation') as HTMLButtonElement;
-    expect(resume.disabled).toBe(true);
-    resume.click();
+    expect(screen.queryByTestId('resume-conversation')).toBeNull();
     expect(onResumeConversation).not.toHaveBeenCalled();
   });
 });

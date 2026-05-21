@@ -256,8 +256,8 @@ interface Props {
   // Header "+" button — kicks off ProjectView's create-conversation flow.
   onNewConversation?: () => void;
   newConversationDisabled?: boolean;
-  // Header "resume" button — synthesizes a handoff prompt from the
-  // current transcript and opens a fresh conversation seeded with it.
+  // Resume flow remains parent-owned; ChatPane does not expose it in the
+  // header because the reload icon reads as a broken refresh control.
   onResumeConversation?: () => void;
   resumeConversationDisabled?: boolean;
   // Conversation list that used to live in the topbar. The chat tab now
@@ -329,8 +329,6 @@ export function ChatPane({
   onAssistantFeedback,
   onNewConversation,
   newConversationDisabled = false,
-  onResumeConversation,
-  resumeConversationDisabled = false,
   conversations,
   activeConversationId,
   onSelectConversation,
@@ -758,19 +756,6 @@ export function ChatPane({
           >
             <Icon name="plus" size={16} />
           </button>
-          {onResumeConversation && messages.length > 0 ? (
-            <button
-              type="button"
-              className="icon-only"
-              data-testid="resume-conversation"
-              title={t('chat.resumeConversation')}
-              aria-label={t('chat.resumeConversation')}
-              onClick={onResumeConversation}
-              disabled={resumeConversationDisabled}
-            >
-              <Icon name="reload" size={16} />
-            </button>
-          ) : null}
           {onCollapse ? (
             <button
               type="button"
