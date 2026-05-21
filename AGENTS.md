@@ -149,6 +149,15 @@ For the full tag dictionary, operational playbook (direct merge / duplicate-titl
 - `AskUserQuestionCard` (in `ToolCard.tsx`) prefers the live `onAnswerToolUse(toolUseId, content)` route (POSTs to `/api/runs/:id/tool-result`) and falls back to the legacy `onSubmitForm(text)` path when the run has already terminated. Selected chips persist across reloads by parsing the stored `tool_result.content` back into the selections shape.
 - Tool group rendering uses `dedupeSnapshotToolRetries` to collapse identical `AskUserQuestion` retries (one card per unique input, keeping the latest tool_use_id) and `TodoWrite` snapshots (only the most recent call, since each call is a state replace).
 
+## Web CSS ownership
+
+- `apps/web/src/index.css` is an import-only cascade entrypoint. Do not add selectors or declarations there; add imports only when a truly global stylesheet is needed, and keep import order intentional.
+- Shared global styles belong in `apps/web/src/styles/`: design tokens, base/reset rules, primitives, app-shell layout, and legacy cross-component selectors that cannot safely be scoped yet. Keep domain-level global files grouped by owner (for example `styles/viewer/` and `styles/workspace/`) instead of adding more large files directly under `styles/`.
+- New component-owned UI styles should default to CSS Modules next to the component (`Component.module.css`) instead of expanding global stylesheets. This is preferred for isolated components, panels, menus, drawers, toolbars, cards, and form sections.
+- When touching an existing component with nearby global styles, prefer migrating that component's local selectors to a CSS Module as part of the change if it is small and testable. Do not mix a large mechanical move with behavior/styling changes in the same patch.
+- Keep global class names only for deliberate shared contracts: reusable primitives, theme hooks, third-party/content styling, cross-component layout, or selectors that rely on global cascade/specificity. Document any new global selector group with its owning feature.
+- CSS refactors must preserve cascade semantics. For mechanical splits, verify expanded import content/order matches the previous stylesheet; for CSS Module migrations, validate the affected UI path with `pnpm --filter @open-design/web typecheck` and a focused build/test or visual check when practical.
+
 ## i18n keys
 
 - `apps/web/src/i18n/types.ts` is the typed `Dict`; every key must be defined in all 18 locale files under `apps/web/src/i18n/locales/*.ts` (`ar`, `de`, `en`, `es-ES`, `fa`, `fr`, `hu`, `id`, `ja`, `ko`, `pl`, `pt-BR`, `ru`, `th`, `tr`, `uk`, `zh-CN`, `zh-TW`). Add the key to `types.ts` first; missing translations produce a typecheck error.
