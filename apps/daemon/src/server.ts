@@ -4349,21 +4349,34 @@ export async function startServer({
   ): void => {
     if (fatalShuttingDown) return;
     fatalShuttingDown = true;
-    try {
-      analyticsService.captureSafety({
-        eventName,
-        appVersion: cachedAppVersion?.version ?? '0.0.0',
-        properties,
-      });
-    } catch {
-      // capture must never block the exit path
-    }
-    // Race shutdown against a hard timeout. If posthog-node hangs on
-    // a slow flush we still die in bounded time — the supervisor will
-    // restart us, which is the whole point.
+    // CRITICAL — wait for captureSafety to ENQUEUE the event in
+    // posthog-node's local buffer before starting shutdown(). The
+    // captureSafety implementation does an `await readInstallationIdSafe()`
+    // before calling `client.capture()`; a sync fire-and-forget here would
+    // race shutdown() ahead of that await, drain an empty queue, and lose
+    // the crash event itself. See codex review on PR #2527 (Siri-Ray).
+    const flushSequence = (async () => {
+      try {
+        await analyticsService.captureSafety({
+          eventName,
+          appVersion: cachedAppVersion?.version ?? '0.0.0',
+          properties,
+        });
+      } catch {
+        // capture must never block the exit path
+      }
+      await analyticsService.shutdown();
+    })();
+    // Race the enqueue+shutdown sequence against a bounded timeout. If
+    // posthog-node hangs on a slow flush (or the installationId read
+    // hangs on the filesystem) we still die in bounded time — the
+    // supervisor will restart us, which is the whole point.
     void Promise.race([
-      analyticsService.shutdown(),
-      new Promise<void>((resolve) => setTimeout(resolve, FATAL_FLUSH_TIMEOUT_MS).unref?.()),
+      flushSequence,
+      new Promise<void>((resolve) => {
+        const handle = setTimeout(resolve, FATAL_FLUSH_TIMEOUT_MS);
+        handle.unref?.();
+      }),
     ]).finally(() => {
       process.exitCode = 1;
       process.exit(1);

@@ -26,7 +26,7 @@ type CaptureSafetyArgs = {
 };
 
 interface FakeAnalyticsService {
-  captureSafety: (args: CaptureSafetyArgs) => void;
+  captureSafety: (args: CaptureSafetyArgs) => Promise<void>;
   shutdown: () => Promise<void>;
 }
 
@@ -41,17 +41,23 @@ function buildFatalShutdown(
   return (eventName, properties) => {
     if (fatalShuttingDown) return;
     fatalShuttingDown = true;
-    try {
-      analyticsService.captureSafety({
-        eventName,
-        appVersion: '1.0.0',
-        properties,
-      });
-    } catch {
-      // capture must never block the exit path
-    }
+    // Await captureSafety BEFORE shutdown — the real captureSafety does
+    // an internal `await readInstallationIdSafe()`, so a sync
+    // fire-and-forget here would let shutdown() drain an empty queue.
+    const flushSequence = (async () => {
+      try {
+        await analyticsService.captureSafety({
+          eventName,
+          appVersion: '1.0.0',
+          properties,
+        });
+      } catch {
+        // capture must never block the exit path
+      }
+      await analyticsService.shutdown();
+    })();
     void Promise.race([
-      analyticsService.shutdown(),
+      flushSequence,
       new Promise<void>((resolve) => setTimeout(resolve, FATAL_FLUSH_TIMEOUT_MS)),
     ]).finally(() => {
       exitFn(1);
@@ -59,14 +65,14 @@ function buildFatalShutdown(
   };
 }
 
-let captureSafetyMock: ReturnType<typeof vi.fn<(args: CaptureSafetyArgs) => void>>;
+let captureSafetyMock: ReturnType<typeof vi.fn<(args: CaptureSafetyArgs) => Promise<void>>>;
 let shutdownMock: ReturnType<typeof vi.fn<() => Promise<void>>>;
 let exitMock: ReturnType<typeof vi.fn<(code: number) => void>>;
 let analytics: FakeAnalyticsService;
 let exit: (code: number) => void;
 
 beforeEach(() => {
-  captureSafetyMock = vi.fn<(args: CaptureSafetyArgs) => void>();
+  captureSafetyMock = vi.fn<(args: CaptureSafetyArgs) => Promise<void>>().mockResolvedValue(undefined);
   shutdownMock = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
   exitMock = vi.fn<(code: number) => void>();
   analytics = {
@@ -130,14 +136,69 @@ describe('daemon fatal-shutdown helper', () => {
   });
 
   it('still tries to exit when captureSafety itself throws', async () => {
-    captureSafetyMock.mockImplementation(() => {
-      throw new Error('posthog client died');
-    });
+    captureSafetyMock.mockRejectedValue(new Error('posthog client died'));
 
     const fatal = buildFatalShutdown(analytics, exit);
     fatal('daemon_uncaught_exception', { error_message: 'capture-explodes' });
 
     await vi.runAllTimersAsync();
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  // Regression test for the codex review on PR #2527 (second pass):
+  // captureSafety must complete (event enqueued in posthog-node) BEFORE
+  // shutdown() drains the queue. A previous fire-and-forget shape let
+  // shutdown race ahead of the internal `await readInstallationIdSafe()`
+  // inside captureSafety, so the crash event was lost during exit.
+  it('waits for the captureSafety promise to settle before invoking shutdown', async () => {
+    const events: string[] = [];
+    captureSafetyMock.mockImplementation(async () => {
+      // Simulate the real captureSafety: an async distinct-id read
+      // happens before client.capture() can run. Give it a tangible
+      // delay so the ordering assertion below has a real gap to observe.
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      events.push('capture-enqueued');
+    });
+    shutdownMock.mockImplementation(async () => {
+      // Give shutdown its own delay too. Without this, capture's resolve
+      // microtask synchronously schedules shutdown's resolve in the same
+      // tick and we can't observe the intermediate "capture done /
+      // shutdown not yet" state that proves the ordering contract.
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      events.push('shutdown-flush');
+    });
+
+    const fatal = buildFatalShutdown(analytics, exit);
+    fatal('daemon_uncaught_exception', { error_message: 'order-check' });
+
+    // After 50ms only capture has run — shutdown is waiting on its own timer.
+    await vi.advanceTimersByTimeAsync(50);
+    expect(events).toEqual(['capture-enqueued']);
+    expect(shutdownMock).toHaveBeenCalledTimes(1);
+    expect(exitMock).not.toHaveBeenCalled();
+
+    // After another 50ms shutdown completes too, then exit fires.
+    await vi.advanceTimersByTimeAsync(50);
+    expect(events).toEqual(['capture-enqueued', 'shutdown-flush']);
+    await vi.runAllTimersAsync();
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  it('still aborts and exits if captureSafety hangs past the bounded timeout', async () => {
+    // Capture hangs forever (e.g. installationId read stuck on FS).
+    captureSafetyMock.mockImplementation(() => new Promise<void>(() => undefined));
+
+    const fatal = buildFatalShutdown(analytics, exit);
+    fatal('daemon_uncaught_exception', { error_message: 'capture-hangs' });
+
+    // shutdown must NOT run while capture is still pending — that was
+    // the original race the previous round of review identified.
+    await vi.advanceTimersByTimeAsync(500);
+    expect(shutdownMock).not.toHaveBeenCalled();
+    expect(exitMock).not.toHaveBeenCalled();
+
+    // The outer bounded timeout still kicks in and forces exit.
+    await vi.advanceTimersByTimeAsync(FATAL_FLUSH_TIMEOUT_MS);
     expect(exitMock).toHaveBeenCalledWith(1);
   });
 });

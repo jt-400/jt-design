@@ -99,6 +99,12 @@ export interface AnalyticsService {
    *
    * Falls back to a synthetic distinctId when the installationId is not
    * yet stamped (first-launch or fork builds without an app-config file).
+   *
+   * Returns a Promise that resolves AFTER the event has been enqueued in
+   * posthog-node's local buffer. Fire-and-forget callers (e.g. the
+   * /api/observability/event endpoint) can `void` it; fatal-exit paths
+   * MUST await before calling `shutdown()` so the crash event actually
+   * makes it into the flush.
    */
   captureSafety(args: {
     eventName: string;
@@ -106,13 +112,13 @@ export interface AnalyticsService {
     appVersion: string;
     properties: Record<string, unknown>;
     insertId?: string;
-  }): void;
+  }): Promise<void>;
   shutdown(): Promise<void>;
 }
 
 const NOOP_SERVICE: AnalyticsService = {
   capture: () => undefined,
-  captureSafety: () => undefined,
+  captureSafety: async () => undefined,
   shutdown: async () => undefined,
 };
 
@@ -183,38 +189,43 @@ export function createAnalyticsService(args: {
         }
       })();
     },
-    captureSafety: ({ eventName, distinctId, appVersion, properties, insertId }) => {
+    captureSafety: async ({ eventName, distinctId, appVersion, properties, insertId }) => {
       // No consent re-check here — that's the entire point of this surface.
       // We still fall back gracefully when the installationId is missing
       // (cold start before the daemon has stamped one in app-config) by
       // synthesizing an anonymous distinct id rooted at the process boot.
+      //
+      // Returns a Promise that resolves AFTER `client.capture()` has run.
+      // The fatal-shutdown path in server.ts awaits this before invoking
+      // `shutdown()` so the event is guaranteed to be in posthog-node's
+      // local queue when the flush starts — otherwise a fast `shutdown()`
+      // would drain an empty queue and the crash signal would be lost.
+      // See codex review on PR #2527 (Siri-Ray) for the original race.
       const resolvedInsertId = insertId ?? randomInsertId();
-      void (async () => {
-        try {
-          const resolvedDistinctId =
-            distinctId && distinctId.length > 0
-              ? distinctId
-              : await readInstallationIdSafe(args.dataDir);
-          client.capture({
-            distinctId: resolvedDistinctId,
-            event: eventName,
-            properties: {
-              ...properties,
-              event_id: resolvedInsertId,
-              event_schema_version: EVENT_SCHEMA_VERSION,
-              ui_version: appVersion,
-              app_version: appVersion,
-              device_id: resolvedDistinctId,
-              client_type: 'daemon',
-              capture_source: 'daemon/safety',
-              $insert_id: resolvedInsertId,
-            },
-          });
-        } catch {
-          // Capture failures must never propagate. The whole point of this
-          // path is best-effort observability into a degraded state.
-        }
-      })();
+      try {
+        const resolvedDistinctId =
+          distinctId && distinctId.length > 0
+            ? distinctId
+            : await readInstallationIdSafe(args.dataDir);
+        client.capture({
+          distinctId: resolvedDistinctId,
+          event: eventName,
+          properties: {
+            ...properties,
+            event_id: resolvedInsertId,
+            event_schema_version: EVENT_SCHEMA_VERSION,
+            ui_version: appVersion,
+            app_version: appVersion,
+            device_id: resolvedDistinctId,
+            client_type: 'daemon',
+            capture_source: 'daemon/safety',
+            $insert_id: resolvedInsertId,
+          },
+        });
+      } catch {
+        // Capture failures must never propagate. The whole point of this
+        // path is best-effort observability into a degraded state.
+      }
     },
     shutdown: async () => {
       try {
