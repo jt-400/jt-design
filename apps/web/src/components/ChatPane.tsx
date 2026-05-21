@@ -1360,16 +1360,24 @@ function UserMessage({
             }}
           />
           <div className="user-edit-actions">
-            <button type="button" className="btn-sm" onClick={cancelEdit}>
-              {t('common.cancel')}
+            <button
+              type="button"
+              className="user-edit-cancel"
+              onClick={cancelEdit}
+              aria-label={t('common.cancel')}
+              title={t('common.cancel')}
+            >
+              <Icon name="close" size={13} />
             </button>
             <button
               type="button"
-              className="btn-sm btn-primary"
+              className="user-edit-submit"
               disabled={!draft.trim()}
               onClick={submitEdit}
+              aria-label={t('chat.saveAndResend')}
+              title={t('chat.saveAndResend')}
             >
-              {t('chat.saveAndResend')}
+              <Icon name="arrow-up" size={15} />
             </button>
           </div>
         </div>

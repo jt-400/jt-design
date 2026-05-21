@@ -2142,12 +2142,13 @@ a.avatar-item:visited {
   }
 }
 .user-edit-wrap {
+  position: relative;
   display: grid;
   gap: 8px;
   width: 100%;
-  padding: 8px;
+  padding: 10px 10px 42px;
   border: 1px solid var(--border);
-  border-radius: 14px 14px 4px 14px;
+  border-radius: 18px 18px 6px 18px;
   background: var(--bg);
   box-shadow: var(--shadow-sm);
 }
@@ -2155,22 +2156,57 @@ a.avatar-item:visited {
   width: 100%;
   min-height: 72px;
   resize: vertical;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: var(--bg);
+  border: none;
+  border-radius: 10px;
+  padding: 4px 6px;
+  background: transparent;
   color: var(--text);
   font: inherit;
   line-height: 1.45;
 }
 .user-edit-input:focus {
-  outline: 2px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  outline: none;
 }
 .user-edit-actions {
+  position: absolute;
+  inset-inline-end: 10px;
+  inset-block-end: 10px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.user-edit-cancel,
+.user-edit-submit {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.user-edit-cancel {
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+.user-edit-cancel:hover {
+  color: var(--text-strong);
+  background: var(--bg-elevated);
+}
+.user-edit-submit {
+  color: var(--bg);
+  background: var(--text-strong);
+  border: 1px solid var(--text-strong);
+}
+.user-edit-submit:hover:not(:disabled) {
+  background: var(--text);
+  border-color: var(--text);
+}
+.user-edit-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .msg.assistant .prose { margin-top: 4px; }
 .msg .artifact-badge {
