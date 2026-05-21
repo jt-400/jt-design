@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { detectOpenDesignHostLocale } from '@open-design/host';
 import { de } from './locales/de';
 import { en } from './locales/en';
 import { id } from './locales/id';
@@ -82,23 +83,42 @@ export function resolveSystemLocale(languages: readonly string[]): Locale | null
   return null;
 }
 
+export function resolveInitialLocalePreference({
+  browserLanguages,
+  hostLocale,
+  storedLocale,
+}: {
+  browserLanguages: readonly string[];
+  hostLocale?: string | null;
+  storedLocale?: string | null;
+}): Locale {
+  if (storedLocale && (LOCALES as readonly string[]).includes(storedLocale)) {
+    return storedLocale as Locale;
+  }
+
+  const hostDetected = hostLocale ? resolveSystemLocale([hostLocale]) : null;
+  if (hostDetected) return hostDetected;
+
+  return resolveSystemLocale(browserLanguages) ?? 'en';
+}
+
 // First-run defaults to the user's browser/system language when possible.
-// An explicit user pick saved to localStorage always wins; unsupported
-// languages fall back to English.
+// Desktop hosts inject the OS locale because packaged Chromium can report
+// its own locale through navigator.language instead of the user's system
+// language. An explicit user pick saved to localStorage always wins.
 function detectInitialLocale(): Locale {
   if (typeof window === 'undefined') return 'en';
+  let storedLocale: string | null = null;
   try {
-    const stored = window.localStorage.getItem(LS_KEY);
-    if (stored && (LOCALES as string[]).includes(stored)) {
-      return stored as Locale;
-    }
+    storedLocale = window.localStorage.getItem(LS_KEY);
   } catch {
     /* ignore */
   }
-  const detected = resolveSystemLocale(
-    navigator.languages?.length ? navigator.languages : [navigator.language],
-  );
-  return detected ?? 'en';
+  return resolveInitialLocalePreference({
+    storedLocale,
+    hostLocale: detectOpenDesignHostLocale(),
+    browserLanguages: navigator.languages?.length ? navigator.languages : [navigator.language],
+  });
 }
 
 interface I18nContextValue {

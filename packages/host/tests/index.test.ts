@@ -8,6 +8,7 @@ import {
   OPEN_DESIGN_HOST_GLOBAL,
   OPEN_DESIGN_HOST_VERSION,
   detectOpenDesignHostClientType,
+  detectOpenDesignHostLocale,
   getOpenDesignHost,
   isOpenDesignHostAvailable,
   isOpenDesignHostBridge,
@@ -65,6 +66,10 @@ describe("open-design host contract", () => {
       ...createMockOpenDesignHost(),
       shell: { openExternal: async () => ({ ok: true }) },
     })).toBe(false);
+    expect(isOpenDesignHostBridge({
+      ...createMockOpenDesignHost(),
+      client: { type: "desktop", locale: 123 },
+    })).toBe(false);
   });
 
   it("reads the bridge through the package-owned global accessor", () => {
@@ -75,10 +80,20 @@ describe("open-design host contract", () => {
     expect(detectOpenDesignHostClientType(scope)).toBe("desktop");
   });
 
+  it("exposes the host-provided OS locale when present", () => {
+    const scope: Record<string, unknown> = {};
+    scope[OPEN_DESIGN_HOST_GLOBAL] = createMockOpenDesignHost({
+      client: { locale: "zh-CN" },
+    });
+
+    expect(detectOpenDesignHostLocale(scope)).toBe("zh-CN");
+  });
+
   it("falls back to web when no host is installed", () => {
     expect(getOpenDesignHost({})).toBeNull();
     expect(isOpenDesignHostAvailable({})).toBe(false);
     expect(detectOpenDesignHostClientType({})).toBe("web");
+    expect(detectOpenDesignHostLocale({})).toBeNull();
   });
 
   it("wraps host action throws into structured failures", async () => {

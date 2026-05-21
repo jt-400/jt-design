@@ -9,6 +9,7 @@ export type OpenDesignHostClientType =
   (typeof OPEN_DESIGN_HOST_CLIENT_TYPES)[keyof typeof OPEN_DESIGN_HOST_CLIENT_TYPES];
 
 export type OpenDesignHostClient = {
+  locale?: string;
   platform?: string;
   type: OpenDesignHostClientType;
 };
@@ -91,6 +92,7 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
   if (value.version !== OPEN_DESIGN_HOST_VERSION) return false;
   const client = value.client;
   if (!isRecord(client) || client.type !== OPEN_DESIGN_HOST_CLIENT_TYPES.DESKTOP) return false;
+  if (client.locale != null && typeof client.locale !== "string") return false;
   if (client.platform != null && typeof client.platform !== "string") return false;
 
   const shell = value.shell;
@@ -166,6 +168,11 @@ export function isOpenDesignHostAvailable(scope: OpenDesignHostGlobalScope = glo
 
 export function detectOpenDesignHostClientType(scope: OpenDesignHostGlobalScope = globalThis): OpenDesignHostClientType | "web" {
   return getOpenDesignHost(scope)?.client.type ?? "web";
+}
+
+export function detectOpenDesignHostLocale(scope: OpenDesignHostGlobalScope = globalThis): string | null {
+  const locale = getOpenDesignHost(scope)?.client.locale?.trim();
+  return locale ? locale : null;
 }
 
 function unavailable(reason: string): OpenDesignHostFailure {

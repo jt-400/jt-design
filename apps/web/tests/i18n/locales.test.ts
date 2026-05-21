@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { resolveSystemLocale } from '../../src/i18n';
+import { resolveInitialLocalePreference, resolveSystemLocale } from '../../src/i18n';
 import { en } from '../../src/i18n/locales/en';
 import { id } from '../../src/i18n/locales/id';
 import { LOCALES, LOCALE_LABEL, type Dict, type Locale } from '../../src/i18n/types';
@@ -41,6 +41,24 @@ describe('i18n locales', () => {
     expect(resolveSystemLocale(['es-MX', 'en-US'])).toBe('es-ES');
     expect(resolveSystemLocale(['nl-NL', 'en-US'])).toBe('en');
     expect(resolveSystemLocale(['nl-NL'])).toBeNull();
+  });
+
+  it('prefers explicit and host locales before browser fallback', () => {
+    expect(resolveInitialLocalePreference({
+      storedLocale: 'ja',
+      hostLocale: 'zh-CN',
+      browserLanguages: ['en-US'],
+    })).toBe('ja');
+    expect(resolveInitialLocalePreference({
+      storedLocale: null,
+      hostLocale: 'zh-Hant-HK',
+      browserLanguages: ['en-US'],
+    })).toBe('zh-TW');
+    expect(resolveInitialLocalePreference({
+      storedLocale: 'unsupported',
+      hostLocale: null,
+      browserLanguages: ['de-DE'],
+    })).toBe('de');
   });
 
   it('registers every supported locale in the language menu', () => {

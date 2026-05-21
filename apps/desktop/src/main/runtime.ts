@@ -3,7 +3,7 @@ import { mkdir, writeFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
+import { BrowserWindow, app, dialog, ipcMain, screen, shell } from "electron";
 import type { DesktopExportPdfInput, DesktopExportPdfResult } from "@open-design/sidecar-proto";
 
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
@@ -636,6 +636,11 @@ function desktopPetUrl(baseUrl: string): string {
   return url.toString();
 }
 
+function hostLocaleArgument(): string[] {
+  const locale = typeof app.getLocale === "function" ? app.getLocale() : "";
+  return locale ? [`--od-host-locale=${encodeURIComponent(locale)}`] : [];
+}
+
 function createDesktopPetWindow(preloadPath: string): BrowserWindow {
   const { workArea } = screen.getPrimaryDisplay();
   const petWindow = new BrowserWindow({
@@ -653,6 +658,7 @@ function createDesktopPetWindow(preloadPath: string): BrowserWindow {
     hasShadow: false,
     focusable: false,
     webPreferences: {
+      additionalArguments: hostLocaleArgument(),
       contextIsolation: true,
       nodeIntegration: false,
       preload: preloadPath,
@@ -920,6 +926,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     title: "Open Design",
     ...MAC_WINDOW_CHROME,
     webPreferences: {
+      additionalArguments: hostLocaleArgument(),
       contextIsolation: true,
       nodeIntegration: false,
       preload: preloadPath,
