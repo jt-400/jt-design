@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n';
 import { emptyManualEditStyles, type ManualEditHistoryEntry, type ManualEditPatch, type ManualEditStyles, type ManualEditTarget } from '../edit-mode/types';
+import { Icon } from './Icon';
 
 export interface ManualEditDraft {
   text: string;
@@ -31,6 +32,7 @@ export function ManualEditPanel({
   onInvalidStyle,
   onError,
   onClearSelection,
+  onExit,
   onApplyPatch,
   onPickImage,
   pageStylesEnabled = true,
@@ -52,6 +54,7 @@ export function ManualEditPanel({
   onPickImage?: (file: File) => Promise<string | null>;
   onError: (message: string) => void;
   onClearSelection: () => void;
+  onExit?: () => void;
   onCancelDraft: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -85,6 +88,20 @@ export function ManualEditPanel({
   return (
     <aside className="manual-edit-right">
       <section className="manual-edit-modal cc-panel">
+        <div className="manual-edit-titlebar">
+          <span>Edit</span>
+          {onExit ? (
+            <button
+              type="button"
+              className="manual-edit-titlebar-close"
+              aria-label="Close edit panel"
+              title="Close edit panel"
+              onClick={onExit}
+            >
+              <Icon name="close" size={16} />
+            </button>
+          ) : null}
+        </div>
         {targetForInspector ? (
           <StyleInspector
             styles={draft.styles}

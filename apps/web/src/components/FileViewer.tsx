@@ -608,6 +608,8 @@ interface Props {
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[]) => Promise<void> | void;
   onFileSaved?: () => Promise<void> | void;
+  manualEditPortalId?: string;
+  onManualEditModeChange?: (active: boolean) => void;
 }
 
 export function FileViewer({
@@ -624,6 +626,8 @@ export function FileViewer({
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
+  manualEditPortalId,
+  onManualEditModeChange,
 }: Props) {
   const rendererMatch = artifactRendererRegistry.resolve({
     file,
@@ -661,6 +665,8 @@ export function FileViewer({
         onRemovePreviewComment={onRemovePreviewComment}
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
+        manualEditPortalId={manualEditPortalId}
+        onManualEditModeChange={onManualEditModeChange}
       />
     );
   }
@@ -3444,6 +3450,8 @@ function HtmlViewer({
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
+  manualEditPortalId,
+  onManualEditModeChange,
 }: {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -3458,6 +3466,8 @@ function HtmlViewer({
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[]) => Promise<void> | void;
   onFileSaved?: () => Promise<void> | void;
+  manualEditPortalId?: string;
+  onManualEditModeChange?: (active: boolean) => void;
 }) {
   const t = useT();
   const analytics = useAnalytics();
@@ -3633,6 +3643,7 @@ function HtmlViewer({
   const [manualEditMode, setManualEditModeRaw] = useState(false);
   const [manualEditFrozenSource, setManualEditFrozenSource] = useState<string | null>(null);
   const [manualEditViewportWidth, setManualEditViewportWidth] = useState<number | null>(null);
+  const [manualEditPortalHost, setManualEditPortalHost] = useState<HTMLElement | null>(null);
   const [previewBodyRef, previewBodySize] = usePreviewCanvasSize<HTMLDivElement>();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -3681,6 +3692,32 @@ function HtmlViewer({
       return value;
     });
   }, []);
+  useEffect(() => {
+    onManualEditModeChange?.(manualEditMode);
+  }, [manualEditMode, onManualEditModeChange]);
+  useEffect(() => () => {
+    onManualEditModeChange?.(false);
+  }, [onManualEditModeChange]);
+  useEffect(() => {
+    if (!manualEditMode || !manualEditPortalId) {
+      setManualEditPortalHost(null);
+      return;
+    }
+    let cancelled = false;
+    let raf = 0;
+    const findHost = () => {
+      if (cancelled) return;
+      const host = document.getElementById(manualEditPortalId);
+      setManualEditPortalHost(host);
+      if (!host) raf = window.requestAnimationFrame(findHost);
+    };
+    findHost();
+    return () => {
+      cancelled = true;
+      if (raf) window.cancelAnimationFrame(raf);
+      setManualEditPortalHost(null);
+    };
+  }, [manualEditMode, manualEditPortalId]);
   const capturePreviewScrollPosition = useCallback(() => {
     const host = previewBodyRef.current;
     let frameLeft = 0;
@@ -5650,6 +5687,54 @@ function HtmlViewer({
   };
   const boardAvailable = mode === 'preview' && source !== null;
   const showPreviewToolbarControls = mode === 'preview';
+  const manualEditPanel = manualEditMode ? (
+    <ManualEditPanel
+      targets={manualEditTargets}
+      selectedTarget={selectedManualEditTarget}
+      draft={manualEditDraft}
+      history={manualEditHistory}
+      error={manualEditError}
+      canUndo={manualEditHistory.length > 0}
+      canRedo={manualEditUndone.length > 0}
+      busy={manualEditSaving}
+      pageStylesEnabled={manualEditPageStylesEnabled}
+      onSelectTarget={selectManualEditTarget}
+      onDraftChange={setManualEditDraft}
+      onStyleChange={(id, styles, label) => {
+        void handleManualEditStyleChange(id, styles, label);
+      }}
+      onInvalidStyle={cancelManualEditPendingStyles}
+      onApplyPatch={(patch, label) => {
+        void applyManualEdit(patch, label);
+      }}
+      onError={setManualEditError}
+      onClearSelection={() => {
+        void clearManualEditTargetSelection();
+      }}
+      onExit={() => {
+        void exitManualEditModeAfterFlush();
+      }}
+      onCancelDraft={() => {
+        if (selectedManualEditTarget) selectManualEditTarget(selectedManualEditTarget);
+      }}
+      onUndo={() => {
+        void undoManualEdit();
+      }}
+      onRedo={() => {
+        void redoManualEdit();
+      }}
+      onPickImage={async (pickedFile) => {
+        const result = await uploadProjectFiles(projectId, [pickedFile]);
+        const uploaded = result.uploaded[0];
+        if (!uploaded?.path) {
+          setManualEditError(result.error ?? t('manualEdit.uploadImageFailed'));
+          return null;
+        }
+        setManualEditError(null);
+        return toOwnerRelativePath(file.name, uploaded.path);
+      }}
+    />
+  ) : null;
 
   return (
     <div className="viewer html-viewer">
@@ -6200,54 +6285,12 @@ function HtmlViewer({
           <div className="viewer-empty">{t('fileViewer.loading')}</div>
         ) : mode === 'preview' ? (
           <div
-            className={`${manualEditMode ? 'manual-edit-workspace' : 'comment-preview-layer'} preview-viewport preview-viewport-${previewViewport}`}
+            className={`${manualEditMode ? `manual-edit-workspace${manualEditPortalId ? ' manual-edit-workspace-portal' : ''}` : 'comment-preview-layer'} preview-viewport preview-viewport-${previewViewport}`}
             style={previewViewportStyle(previewViewport, previewScale, previewBodySize)}
           >
-            {manualEditMode ? (
-              <ManualEditPanel
-                targets={manualEditTargets}
-                selectedTarget={selectedManualEditTarget}
-                draft={manualEditDraft}
-                history={manualEditHistory}
-                error={manualEditError}
-                canUndo={manualEditHistory.length > 0}
-                canRedo={manualEditUndone.length > 0}
-                busy={manualEditSaving}
-                pageStylesEnabled={manualEditPageStylesEnabled}
-                onSelectTarget={selectManualEditTarget}
-                onDraftChange={setManualEditDraft}
-                onStyleChange={(id, styles, label) => {
-                  void handleManualEditStyleChange(id, styles, label);
-                }}
-                onInvalidStyle={cancelManualEditPendingStyles}
-                onApplyPatch={(patch, label) => {
-                  void applyManualEdit(patch, label);
-                }}
-                onError={setManualEditError}
-                onClearSelection={() => {
-                  void clearManualEditTargetSelection();
-                }}
-                onCancelDraft={() => {
-                  if (selectedManualEditTarget) selectManualEditTarget(selectedManualEditTarget);
-                }}
-                onUndo={() => {
-                  void undoManualEdit();
-                }}
-                onRedo={() => {
-                  void redoManualEdit();
-                }}
-                onPickImage={async (pickedFile) => {
-                  const result = await uploadProjectFiles(projectId, [pickedFile]);
-                  const uploaded = result.uploaded[0];
-                  if (!uploaded?.path) {
-                    setManualEditError(result.error ?? t('manualEdit.uploadImageFailed'));
-                    return null;
-                  }
-                  setManualEditError(null);
-                  return toOwnerRelativePath(file.name, uploaded.path);
-                }}
-              />
-            ) : null}
+            {manualEditPortalHost && manualEditPanel
+              ? createPortal(manualEditPanel, manualEditPortalHost)
+              : manualEditPanel}
             <div className={manualEditMode ? 'manual-edit-canvas' : 'comment-frame-clip'}>
               <div
                 style={

@@ -1894,6 +1894,37 @@ a.avatar-item:visited {
   transition: background 120ms ease;
   touch-action: none;
 }
+.split-edit-divider {
+  width: 8px;
+  min-width: 8px;
+  height: 100%;
+  border-right: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.manual-edit-left-host {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+.manual-edit-left-host > .manual-edit-right {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  gap: 0;
+}
+.manual-edit-left-host .manual-edit-modal {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.manual-edit-left-host .manual-edit-modal.cc-panel {
+  padding-top: 0;
+  padding-bottom: 32px;
+}
 .split-resize-handle:hover,
 .split-resize-handle:focus-visible,
 .split.is-resizing-chat .split-resize-handle {
@@ -22379,6 +22410,9 @@ body.desktop-pet-shell .pet-task-item {
   padding: 10px;
   background: var(--bg);
 }
+.manual-edit-workspace-portal {
+  grid-template-columns: minmax(0, 1fr);
+}
 .manual-edit-workspace > .manual-edit-canvas { grid-column: 1; grid-row: 1; }
 .manual-edit-workspace > .manual-edit-right {
   grid-column: 2;
@@ -22386,6 +22420,9 @@ body.desktop-pet-shell .pet-task-item {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+.manual-edit-workspace-portal > .manual-edit-right {
+  display: none;
 }
 
 /* Claude Code-style edit inspector panel. */
@@ -22543,6 +22580,10 @@ body.desktop-pet-shell .pet-task-item {
   grid-template-columns: 240px calc(var(--preview-viewport-width) * var(--preview-scale, 1)) 344px;
   justify-content: start;
 }
+.manual-edit-workspace-portal.preview-viewport:not(.preview-viewport-desktop) {
+  grid-template-columns: calc(var(--preview-viewport-width) * var(--preview-scale, 1));
+  justify-content: center;
+}
 
 .manual-edit-canvas {
   position: relative;
@@ -22657,6 +22698,35 @@ body.desktop-pet-shell .pet-task-item {
   overscroll-behavior: contain;
   padding-bottom: 72px;
   scrollbar-gutter: stable;
+}
+.manual-edit-titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.manual-edit-titlebar-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.manual-edit-titlebar-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .manual-edit-modal-head {
