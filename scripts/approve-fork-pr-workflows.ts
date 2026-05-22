@@ -42,7 +42,7 @@ type WorkflowRunsResponse = {
 };
 
 type ListPendingApprovalRunsDeps = {
-  loadWorkflowRunsResponse?: (path: string) => Promise<WorkflowRunsResponse>;
+  loadWorkflowRunsResponsePage?: (path: string) => Promise<WorkflowRunsResponse>;
   loadPullRequestsForHeadSha?: (repo: string, headSha: string) => Promise<PullRequest[]>;
 };
 
@@ -269,22 +269,38 @@ async function listPullRequestsForHeadSha(repo: string, headSha: string): Promis
   return githubPaginated<PullRequest>(`/repos/${repo}/commits/${headSha}/pulls`);
 }
 
+async function listWorkflowRunsForHeadSha(
+  repo: string,
+  headSha: string,
+  loadWorkflowRunsResponsePage: (path: string) => Promise<WorkflowRunsResponse>,
+): Promise<WorkflowRun[]> {
+  const workflowRuns: WorkflowRun[] = [];
+
+  for (let page = 1; ; page += 1) {
+    const response = await loadWorkflowRunsResponsePage(
+      `/repos/${repo}/actions/runs?event=pull_request&head_sha=${headSha}&per_page=100&page=${page}`,
+    );
+    workflowRuns.push(...response.workflow_runs);
+    if (response.workflow_runs.length < 100) return workflowRuns;
+  }
+}
+
 export async function listPendingApprovalRuns(
   repo: string,
   pull: PullRequest,
   deps: ListPendingApprovalRunsDeps = {},
 ): Promise<WorkflowRun[]> {
-  const loadWorkflowRunsResponse = deps.loadWorkflowRunsResponse ?? ((path: string) => github<WorkflowRunsResponse>(path));
+  const loadWorkflowRunsResponsePage = deps.loadWorkflowRunsResponsePage ?? ((path: string) => github<WorkflowRunsResponse>(path));
   const loadPullRequestsForHeadSha =
     deps.loadPullRequestsForHeadSha ?? ((currentRepo: string, headSha: string) => listPullRequestsForHeadSha(currentRepo, headSha));
 
-  const runs = await loadWorkflowRunsResponse(`/repos/${repo}/actions/runs?event=pull_request&head_sha=${pull.head.sha}&per_page=100`);
+  const workflowRuns = await listWorkflowRunsForHeadSha(repo, pull.head.sha, loadWorkflowRunsResponsePage);
 
   const associatedPullsForHeadSha = (await loadPullRequestsForHeadSha(repo, pull.head.sha)).filter(
     (candidate) => candidate.state === "open",
   );
 
-  return runs.workflow_runs.filter(
+  return workflowRuns.filter(
     (run) => isPendingApprovalRun(run, pull) && runTargetsPullRequest(run, pull, associatedPullsForHeadSha),
   );
 }

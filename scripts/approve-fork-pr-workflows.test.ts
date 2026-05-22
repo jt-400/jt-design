@@ -317,7 +317,7 @@ test("runTargetsPullRequest ignores base tip churn for the same PR association",
   assert.equal(runTargetsPullRequest(run, pull, [pull]), true);
 });
 
-test("listPendingApprovalRuns fetches all pull_request runs for the head SHA and filters action_required client-side", async () => {
+test("listPendingApprovalRuns paginates all pull_request runs for the head SHA and filters action_required client-side", async () => {
   const pull = {
     number: 2683,
     state: "open",
@@ -333,10 +333,25 @@ test("listPendingApprovalRuns fetches all pull_request runs for the head SHA and
     },
   };
 
-  let requestedPath = "";
+  const requestedPaths: string[] = [];
   const pendingRuns = await listPendingApprovalRuns("nexu-io/open-design", pull, {
-    loadWorkflowRunsResponse: async (path) => {
-      requestedPath = path;
+    loadWorkflowRunsResponsePage: async (path) => {
+      requestedPaths.push(path);
+      if (path.endsWith("page=1")) {
+        return {
+          workflow_runs: Array.from({ length: 100 }, (_, index) => ({
+            id: 26273463600 + index,
+            name: "CI",
+            event: "pull_request",
+            status: "completed",
+            conclusion: "success",
+            head_sha: pull.head.sha,
+            path: ".github/workflows/ci.yml@main",
+            pull_requests: [],
+          })),
+        };
+      }
+
       return {
         workflow_runs: [
           {
@@ -365,7 +380,11 @@ test("listPendingApprovalRuns fetches all pull_request runs for the head SHA and
     loadPullRequestsForHeadSha: async () => [pull],
   });
 
-  assert.equal(requestedPath.includes("status=action_required"), false);
+  assert.deepEqual(requestedPaths, [
+    "/repos/nexu-io/open-design/actions/runs?event=pull_request&head_sha=734076155c44e569304856590019cea54506fdab&per_page=100&page=1",
+    "/repos/nexu-io/open-design/actions/runs?event=pull_request&head_sha=734076155c44e569304856590019cea54506fdab&per_page=100&page=2",
+  ]);
+  assert.equal(requestedPaths.some((path) => path.includes("status=action_required")), false);
   assert.deepEqual(
     pendingRuns.map((run) => run.id),
     [26273463769],
