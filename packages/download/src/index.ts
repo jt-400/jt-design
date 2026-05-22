@@ -15,7 +15,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
-import { atomicCopyFile, pathContains, removePathBestEffort } from "@open-design/platform";
+import { atomicCopyFile, isProcessAlive, pathContains, removePathBestEffort } from "@open-design/platform";
 
 const STORE_SENTINEL = ".open-design-download-root.json";
 const STATE_DIR = ".state";
@@ -194,6 +194,11 @@ type CopyLeaseState = {
 
 type AcquiredLock = {
   path: string;
+};
+
+type DownloadLockFile = {
+  createdAt: string;
+  pid: number;
 };
 
 type DownloadAttemptResult = {
@@ -400,6 +405,15 @@ function isManifest(value: unknown): value is DownloadManifest {
     typeof record.createdAt === "string" &&
     typeof record.updatedAt === "string"
   );
+}
+
+function isDownloadLockFile(value: unknown): value is DownloadLockFile {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) return false;
+  const record = value as Partial<DownloadLockFile>;
+  return typeof record.createdAt === "string" &&
+    typeof record.pid === "number" &&
+    Number.isInteger(record.pid) &&
+    record.pid > 0;
 }
 
 async function readManifest(path: string): Promise<DownloadManifest | "invalid" | null> {
@@ -627,15 +641,31 @@ async function downloadWithRetries(
 
 async function acquireLock(target: NormalizedTarget): Promise<AcquiredLock> {
   await mkdir(dirname(target.lockPath), { recursive: true });
-  try {
-    await writeFile(target.lockPath, `${JSON.stringify({ createdAt: new Date().toISOString(), pid: process.pid })}\n`, { flag: "wx" });
-    return { path: target.lockPath };
-  } catch (error) {
-    if (errorCode(error) === "EEXIST") {
-      throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.TARGET_LOCKED, `download target is locked: ${target.bucket}/${target.fileName}`);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await writeFile(
+        target.lockPath,
+        `${JSON.stringify({ createdAt: new Date().toISOString(), pid: process.pid } satisfies DownloadLockFile)}\n`,
+        { flag: "wx" },
+      );
+      return { path: target.lockPath };
+    } catch (error) {
+      if (errorCode(error) === "EEXIST") {
+        const staleLockCleared = attempt === 0 && await clearStaleLock(target);
+        if (staleLockCleared) continue;
+        throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.TARGET_LOCKED, `download target is locked: ${target.bucket}/${target.fileName}`);
+      }
+      throw error;
     }
-    throw error;
   }
+  throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.TARGET_LOCKED, `download target is locked: ${target.bucket}/${target.fileName}`);
+}
+
+async function clearStaleLock(target: NormalizedTarget): Promise<boolean> {
+  const lock = await readJson<unknown>(target.lockPath);
+  if (!isDownloadLockFile(lock) || isProcessAlive(lock.pid)) return false;
+  await rm(target.lockPath, { force: true }).catch(() => undefined);
+  return true;
 }
 
 async function releaseLock(lock: AcquiredLock | null): Promise<void> {

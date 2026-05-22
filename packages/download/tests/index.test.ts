@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -43,6 +44,21 @@ function tmpRoot(label: string): string {
 
 function sha256(body: Buffer | string): string {
   return createHash("sha256").update(body).digest("hex");
+}
+
+function targetKey(bucket: string, fileName: string): string {
+  return createHash("sha256").update(`${bucket}\0${fileName}`).digest("hex");
+}
+
+function lockPath(basePath: string, bucket: string, fileName: string): string {
+  return join(basePath, ".locks", `${targetKey(bucket, fileName)}.lock`);
+}
+
+function exitedPid(): number {
+  const child = spawnSync(process.execPath, ["-e", ""], { stdio: "ignore" });
+  if (child.error != null) throw child.error;
+  if (typeof child.pid !== "number") throw new Error("spawnSync did not expose a pid");
+  return child.pid;
 }
 
 function sendBody(response: ServerResponse, body: Buffer, options: { delayMs?: number } = {}): void {
@@ -246,6 +262,59 @@ describe("managed download package", () => {
       const result = await keeper;
       expect(readFileSync(result.path, "utf8")).toBe(body);
       expect(fixture.requests).toHaveLength(1);
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("clears a stale pid lock before acquiring the target", async () => {
+    const body = "stale lock payload";
+    const fixture = await startFixture(body);
+    const root = tmpRoot("stale-lock");
+    const basePath = join(root, "downloads");
+    try {
+      await inspectManagedDownload({ basePath, bucket: "updates", fileName: "installer.bin" });
+      writeFileSync(lockPath(basePath, "updates", "installer.bin"), JSON.stringify({
+        createdAt: new Date().toISOString(),
+        pid: exitedPid(),
+      }));
+
+      const result = await managedDownload({
+        basePath,
+        bucket: "updates",
+        fileName: "installer.bin",
+        payload: { checksum: { algorithm: "sha256", value: sha256(body) }, url: fixture.url },
+      });
+
+      expect(readFileSync(result.path, "utf8")).toBe(body);
+      expect(existsSync(lockPath(basePath, "updates", "installer.bin"))).toBe(false);
+      expect(fixture.requests).toHaveLength(1);
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("quick-fails when the target lock pid is still alive", async () => {
+    const body = "alive lock payload";
+    const fixture = await startFixture(body);
+    const root = tmpRoot("alive-lock");
+    const basePath = join(root, "downloads");
+    try {
+      await inspectManagedDownload({ basePath, bucket: "updates", fileName: "installer.bin" });
+      writeFileSync(lockPath(basePath, "updates", "installer.bin"), JSON.stringify({
+        createdAt: new Date().toISOString(),
+        pid: process.pid,
+      }));
+
+      await expect(
+        managedDownload({
+          basePath,
+          bucket: "updates",
+          fileName: "installer.bin",
+          payload: { checksum: { algorithm: "sha256", value: sha256(body) }, url: fixture.url },
+        }),
+      ).rejects.toMatchObject({ code: MANAGED_DOWNLOAD_ERROR_CODES.TARGET_LOCKED });
+      expect(fixture.requests).toHaveLength(0);
     } finally {
       await fixture.close();
     }
