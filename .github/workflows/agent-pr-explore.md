@@ -8,8 +8,15 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      # apps/web surface
       - "apps/web/**"
+      # apps/landing-page surface + its content sources per apps/landing-page/AGENTS.md
       - "apps/landing-page/**"
+      - "design-templates/open-design-landing/**"
+      - "skills/**"
+      - "design-systems/**"
+      - "craft/**"
+      - "templates/**"
 
 # Concurrency: a new push on the same PR cancels any in-flight or
 # pending-approval run, so the agent always evaluates the latest SHA
@@ -72,6 +79,20 @@ pre-agent-steps:
       ref: ${{ github.event.pull_request.head.sha }}
       fetch-depth: 0
 
+  - name: Fail-fast on fork-origin PR
+    shell: bash
+    env:
+      HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+      BASE_REPO: ${{ github.repository }}
+    run: |
+      if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+        echo "::error::Fork-origin PR detected ($HEAD_REPO != $BASE_REPO)."
+        echo "External / fork-PR coverage is structurally out of scope for v1."
+        echo "GitHub does not pass repository secrets to forked workflows;"
+        echo "see spec § Scope → Note on external / fork PRs."
+        exit 1
+      fi
+
   - name: Detect surface
     id: surface
     shell: bash
@@ -88,20 +109,34 @@ pre-agent-steps:
         case "$f" in
           apps/web/*) web_touched=true ;;
           apps/landing-page/*) lp_touched=true ;;
+          # landing-page content sources per apps/landing-page/AGENTS.md —
+          # SKILL.md edits, design-system bumps, etc all change rendered
+          # landing-page output and therefore qualify for the landing run.
+          design-templates/open-design-landing/*) lp_touched=true ;;
+          skills/*) lp_touched=true ;;
+          design-systems/*) lp_touched=true ;;
+          craft/*) lp_touched=true ;;
+          templates/*) lp_touched=true ;;
         esac
       done <<< "$files"
-      # apps/web wins when both are touched — landing-page gets exercised
-      # via the web app's standalone build path; landing-page-only paths
-      # take the Astro route. See spec § Launch model.
+      # v1: when both surfaces are touched, run only the apps/web pass;
+      # the comment will note that landing-page changes were also present
+      # and ask for manual review. Two-pass execution is a follow-on spec.
       if [ "$web_touched" = "true" ]; then
         echo "surface=web" >> "$GITHUB_OUTPUT"
         echo "base_url=http://127.0.0.1:17573" >> "$GITHUB_OUTPUT"
+        if [ "$lp_touched" = "true" ]; then
+          echo "mixed_pr=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "mixed_pr=false" >> "$GITHUB_OUTPUT"
+        fi
       elif [ "$lp_touched" = "true" ]; then
         echo "surface=landing-page" >> "$GITHUB_OUTPUT"
         echo "base_url=http://127.0.0.1:17574" >> "$GITHUB_OUTPUT"
+        echo "mixed_pr=false" >> "$GITHUB_OUTPUT"
       else
         echo "surface=none" >> "$GITHUB_OUTPUT"
-        echo "::error::PR matched workflow paths but no apps/web or apps/landing-page change detected — refusing to run."
+        echo "::error::PR matched workflow paths but no observable surface detected — refusing to run."
         exit 1
       fi
 
@@ -184,11 +219,12 @@ post-steps:
       GH_AW_AGENT_OUTPUT_DIR: /tmp/gh-aw
       PR_NUMBER: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      APPROVER: ${{ github.actor }}
+      # github.triggering_actor — for environment-approval-gated runs,
+      # this is the user who clicked Approve, not the PR author. See
+      # spec § Comment output format for the Approved by contract.
+      APPROVER: ${{ github.triggering_actor }}
     run: |
       mkdir -p /tmp/agent-report
-      # The agent's session jsonl + STEP markers feed the wrapper.
-      # If extract fails, fall back to a minimal "see artifact" note.
       node --experimental-strip-types e2e/agent/extract-verdicts.ts \
         --input "${GH_AW_AGENT_OUTPUT_DIR}/agent_output.json" \
         --pr "$PR_NUMBER" \
@@ -197,14 +233,48 @@ post-steps:
         --output /tmp/agent-report/comment.md \
       || echo "wrapper failed — see uploaded session jsonl" > /tmp/agent-report/comment.md
 
-# Safe-outputs: read-only agent submits a comment request + uploads
-# the session jsonl + extracted markdown. Threat-detection blocks
-# safe-outputs if the agent output contains injection / secret leak /
-# malicious patch — see spec § Security.
+  # P1-private: route the rendered report to a maintainer-only channel
+  # via a generic webhook URL (Discord, Slack, internal endpoint, etc).
+  # No public PR comment yet. If PRIVATE_REPORT_WEBHOOK_URL is unset,
+  # falls back to upload-artifact only (still accessible to
+  # maintainers via the Actions UI).
+  #
+  # P1-public (separate follow-up PR): replace this step with a
+  # `safe-outputs.add-comment` entry that publishes to the PR.
+  - name: Post report to private channel
+    if: always()
+    shell: bash
+    env:
+      WEBHOOK_URL: ${{ secrets.PRIVATE_REPORT_WEBHOOK_URL }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+    run: |
+      if [ -z "$WEBHOOK_URL" ]; then
+        echo "PRIVATE_REPORT_WEBHOOK_URL not set — report only in artifact."
+        exit 0
+      fi
+      # Generic payload — Discord and Slack both accept a JSON body
+      # with a 'content' field; repo-specific receivers can adapt.
+      body=$(cat /tmp/agent-report/comment.md)
+      # Cap body to 1900 chars to stay under most webhook limits;
+      # full report still in artifact.
+      truncated=$(echo "$body" | head -c 1900)
+      payload=$(jq -n \
+        --arg pr "$PR_NUMBER" \
+        --arg url "$PR_URL" \
+        --arg body "$truncated" \
+        '{content: "🤖 Agent report for PR \($pr) — \($url)\n\n\($body)"}')
+      curl -sS -X POST -H "Content-Type: application/json" \
+        -d "$payload" "$WEBHOOK_URL" || true
+
+# Safe-outputs: P1-private uses only upload-artifact (the rendered
+# report + the raw session jsonl). No public PR comment — see spec
+# § Rollout for the P1-private vs P1-public split.
+#
+# Threat-detection still runs on the agent's output even though we're
+# not surfacing it as a PR comment; gh-aw enforces that on any
+# safe-output operation including upload-artifact.
 safe-outputs:
-  add-comment:
-    max: 1
-    target: "*"
   upload-artifact:
     max-uploads: 1
     allowed-paths:
@@ -287,7 +357,7 @@ The dev server renders user-authored content (PR-author's UI changes plus produc
 
 - Never modify files, never `git commit`, never `git push`, never run `gh pr` write commands.
 - Never write secrets, env vars, or tokens into any STEP_DONE or sediment line.
-- If `$OD_BASE_URL` is unreachable after 3 retry attempts, emit one `STEP_DONE|step-NN|Dev server unreachable — aborting` and end the session.
+- If `$OD_BASE_URL` is unreachable after 3 retry attempts, emit a paired `STEP_START|step-NN|Verify dev server reachable at $OD_BASE_URL` followed by `STEP_DONE|step-NN|Dev server unreachable after 3 retries — aborting run`, then `RUN_DONE|fail|dev server never came up`, and end the session. The marker contract is non-negotiable; abort still requires a paired START/DONE.
 - Do NOT exceed 16 STEP_DONE pairs in one run — if you can't cover the body claims in 16 steps, your scenario design is too granular; consolidate.
 - Output language: English. Internal-team UI strings may be in any language; your verdicts are English (machine-parsed downstream).
 

@@ -84,15 +84,30 @@ Out (deferred to a separate proposal once internal accuracy is proven):
 - Screenshot / video / Playwright-trace persistence (requires replacing
   the upstream `expect-cli` MCP — see Phase 3).
 
-Note on external / fork PRs: the **mechanism** above already handles
-them safely — the workflow waits for explicit maintainer approval
-before any agent code runs, so a fork-origin PR or an external
-contributor's PR is not different in security posture from an
-internal one. The **operational stance** for v1 is that maintainers
-exercise judgment about whether to approve a given external PR; a
-follow-on spec will define when external-PR approval becomes routine
-(e.g., after 4-8 weeks of internal observation). v1 does not need
-a hard mechanism-level exclusion.
+**External / fork PRs are structurally out of scope for v1 — not as
+a policy choice, as a GitHub platform limitation.**
+
+GitHub does not pass repository secrets to runners on `pull_request`
+workflows triggered from forked repositories ([docs](https://docs.github.com/en/actions/how-tos/security-for-github-actions/security-guides/using-secrets-in-github-actions):
+_"With the exception of `GITHUB_TOKEN`, secrets are not passed to the
+runner when a workflow is triggered from a forked repository."_).
+Since the agent requires `ANTHROPIC_API_KEY` (v1 default — see Cost),
+fork-origin PRs literally cannot execute this workflow even if a
+maintainer approves them. The workflow's job-level `if:` includes
+a guard (`head.repo.full_name == github.repository`) to fail fast
+with a clear "fork PR — external coverage requires the future
+two-plane spec" message rather than time out on a missing secret.
+
+A future spec (not this one) covering external-PR support must
+adopt a two-plane architecture (UI execution plane with no LLM
+credentials; analysis plane with credentials but never runs PR
+code) per @PerishCode's proposal — that is the only architecture
+GitHub's secret-isolation model allows for external coverage. Even
+two-plane does not eliminate supply-chain risk on the analysis
+plane (transitive npm deps are attack vectors regardless of plane
+separation); the future spec must layer microVM isolation,
+per-PR dependency cache isolation, monitored egress, and an
+explicit residual-risk acceptance.
 
 ### Success Criteria
 
@@ -283,20 +298,40 @@ based on which paths the PR touches:
 
 | PR touches | Boot command | Base URL the agent receives |
 |---|---|---|
-| `apps/web/**` (with or without landing-page) | `pnpm tools-dev run web --namespace agent-pr-${{ pr.number }}-${{ pr.head.sha[:8] }} --daemon-port 17456 --web-port 17573` | `http://127.0.0.1:17573` |
-| `apps/landing-page/**` only | `pnpm --filter @open-design/landing-page dev` (Astro, port 17574) | `http://127.0.0.1:17574` |
+| `apps/web/**` only | `pnpm tools-dev run web --namespace agent-pr-<N>-<sha8> --daemon-port 17456 --web-port 17573` | `http://127.0.0.1:17573` |
+| `apps/landing-page/**` or its content sources only | `pnpm --filter @open-design/landing-page dev` (Astro, port 17574) | `http://127.0.0.1:17574` |
+| **Both** surfaces touched | v1: runs only the apps/web pass and the comment surfaces "landing-page changes also present but not verified by this run — please review manually or push a landing-page-only follow-up commit". A follow-up spec covers proper two-pass execution. | apps/web URL |
 
-Resolution: the pre-agent step inspects `gh pr diff --name-only` and
-sets `OD_BASE_URL` + the boot command in matrix-style env vars. If
-the PR touches **both** surfaces, the workflow runs in `apps/web`
-mode (the larger surface) and the landing-page is covered as part of
-the web app's standalone build — landing-page-only verification of a
-mixed PR is intentionally not modeled in v1.
+**Landing-page input contract** (per `apps/landing-page/AGENTS.md`):
+user-visible landing-page output depends on the page sources AND on
+the following content paths, so the path filter must include them all
+to avoid missing PRs that change rendered output:
 
-Spike note: PR #2588 was landing-page-only and used the second path;
-PR #2572 was `apps/web` and used the first. Both ran successfully
-under the spike, so the routing is validated end-to-end. The spec
-just hadn't captured the branching until now.
+```
+apps/landing-page/**
+design-templates/open-design-landing/**
+skills/**
+design-systems/**
+craft/**
+templates/**
+```
+
+A `SKILL.md`-only change can change what the landing-page renders;
+the path filter must trigger on those PRs too. (Confirmed by
+@nettee's review against `apps/landing-page/AGENTS.md`.)
+
+Resolution: the pre-agent step inspects `gh pr diff --name-only`,
+sets `OD_SURFACES` to a space-separated list of `web` / `landing`,
+and the agent step loops over them. If neither is touched the
+workflow exits with a "not applicable" status before the agent runs.
+
+Spike note: PR #2588 was landing-page-only and used the Astro path;
+PR #2572 was `apps/web` and used `tools-dev`. Neither exercised the
+mixed-surface path; v1 ships with the two-pass design but the first
+real mixed PR will validate it in P1-private. If the two-pass
+overhead is excessive (estimated +5-8 min wall time when both
+surfaces are touched), a future spec can revisit consolidating into
+a single agent run with two browser contexts.
 
 ### Concurrency
 
@@ -530,16 +565,23 @@ code lands all at once (the spec + workflow + wrapper are in the
 same PR). Phases gate **who can approve runs** and what categories
 of PR are eligible to be approved.
 
-| Phase | Trigger to enter | Required-reviewers list | Approvable PRs |
-|---|---|---|---|
-| **P0** | Now | n/a (spec review) | n/a |
-| **P1** | Spec + implementation PR merged | `@lefarcen` only | Internal-only |
-| **P2** | After P1 sees ~5 approved runs with no false alarms | Full pool (`mrcfps`, `nettee`, `Siri-Ray`, `PerishCode`, `qiongyu1999`, `lefarcen`) | Internal + external, judgment per PR |
-| **P3** | After ~30 approved runs, accuracy ≥ 70% | Same as P2 | Add Playwright trace recording; pilot adversarial-coverage agent |
-| **P4** (separate spec) | When P3 reveals systematic limits | — | Self-driven Playwright driver replaces `expect-cli`; CLI-exploratory-agent covers the `od` half of dual-track |
+| Phase | Trigger to enter | Required-reviewers list | Output sink | Approvable PRs |
+|---|---|---|---|---|
+| **P0** | Now | n/a (spec review) | n/a | n/a |
+| **P1-private** | Spec + impl PR merged | `@lefarcen` only | **Maintainer-only channel** (Discord webhook / private tracking issue / generic webhook URL — repo-configurable). No public PR comments yet. | Internal same-repo |
+| **P1-public** | After ~5 P1-private runs with no false alarms AND maintainer agreement on the comment format | Same as P1-private | Switch to public `safe-outputs.add-comment` via a small follow-up PR | Internal same-repo |
+| **P2** | After P1-public sees ~30 approved runs, accuracy ≥ 70% | Full pool (`mrcfps`, `nettee`, `Siri-Ray`, `PerishCode`, `qiongyu1999`, `lefarcen`) | Public `add-comment` | Internal same-repo only — fork PR coverage requires a separate spec (see Scope § Note on external / fork PRs) |
+| **P3** | After accuracy plateau | Same as P2 | Same | Add Playwright trace recording; pilot adversarial-coverage agent |
+| **P4** (separate spec) | If external-PR coverage becomes business-critical | — | Same | External / fork PRs via two-plane architecture (see § Scope) |
 
-External-PR support is no longer its own phase — manual approval
-absorbs it from P2 onward.
+**The P1-private → P1-public split is load-bearing** — see
+@PerishCode's review for the reasoning. We have zero signal data on
+whether the comment format works for maintainers, where false-alarm
+rates land, or which PR types benefit. Iterating in a private channel
+for 2-4 weeks before committing to a public comment contract
+preserves the ability to change format / prompt / structure without
+the "don't break the published contract" tax. Once stable, P1-public
+flips one config and the same engineering carries forward.
 
 Each transition is a small repo-settings change (edit the environment's
 required-reviewers list in GitHub Settings) plus optionally a one-line

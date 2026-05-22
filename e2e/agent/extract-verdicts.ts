@@ -120,6 +120,13 @@ function parseRun(rawInput: string): ParsedRun {
   const sediments: Sediment[] = [];
   let overall: ParsedRun["overall"] = null;
   let overallRationale: string | null = null;
+  // Track which (kind, id) pairs we've seen so we can flag duplicates
+  // — spec § Wire format requires "exactly one STEP_START + one
+  // STEP_DONE per id". A second STEP_START or STEP_DONE on the same
+  // id is a parse failure, not a silent overwrite.
+  const seenMarkers = new Set<string>();
+  // Track sequence order to detect monotonic/no-skip violations.
+  let lastNumericId = 0;
 
   for (const text of iterateTextBlocks(rawInput)) {
     for (const line of text.split("\n")) {
@@ -131,6 +138,24 @@ function parseRun(rawInput: string): ParsedRun {
         const kind = sMatch[1];
         const id = sMatch[2];
         const payload = sMatch[3];
+        const markerKey = `${kind}|${id}`;
+
+        // Duplicate marker check (e.g., two STEP_START on the same id)
+        if (seenMarkers.has(markerKey)) {
+          if (!steps.has(id)) {
+            steps.set(id, { id, status: "unknown" });
+            stepOrder.push(id);
+          }
+          const step = steps.get(id)!;
+          step.status = "unknown";
+          step.rawError =
+            (step.rawError ?? "") +
+            (step.rawError ? " · " : "") +
+            `duplicate ${kind} marker for ${id}`;
+          continue;
+        }
+        seenMarkers.add(markerKey);
+
         if (payload.length > MAX_FIELD_LEN) {
           if (!steps.has(id)) {
             steps.set(id, {
@@ -145,6 +170,21 @@ function parseRun(rawInput: string): ParsedRun {
         if (!steps.has(id)) {
           steps.set(id, { id, status: "unknown" });
           stepOrder.push(id);
+          // Monotonic / no-skip / starts-at-01 check fires on first
+          // sighting of a new step id only.
+          const numericId = Number.parseInt(id.replace("step-", ""), 10);
+          const expected = lastNumericId + 1;
+          if (numericId !== expected) {
+            const step = steps.get(id)!;
+            step.status = "unknown";
+            step.rawError =
+              (step.rawError ?? "") +
+              (step.rawError ? " · " : "") +
+              (lastNumericId === 0 && numericId !== 1
+                ? `first step-id was ${id}, expected step-01`
+                : `step-id ${id} not monotonic (expected step-${String(expected).padStart(2, "0")})`);
+          }
+          lastNumericId = numericId;
         }
         const step = steps.get(id)!;
         if (kind === "START") {
