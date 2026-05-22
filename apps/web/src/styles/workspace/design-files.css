@@ -944,6 +944,27 @@
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-xs);
+  transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .df-preview-close {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .df-preview:hover .df-preview-close,
+  .df-preview-close:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (any-pointer: coarse) {
+  .df-preview-close {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .df-preview-close:hover {
   background: var(--bg-subtle);
