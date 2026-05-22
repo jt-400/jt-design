@@ -332,6 +332,26 @@ function filterAllowedKeys(obj: Record<string, unknown>): AppConfigPrefs {
   return result as AppConfigPrefs;
 }
 
+// Fill in telemetry defaults when the saved config has no `telemetry`
+// field at all (fresh install, pre-disclosure). `metrics` / `content`
+// default to true so onboarding-funnel events emit from the first
+// render — without these defaults the gate at
+// `analytics.ts` (`if (cfg.telemetry?.metrics !== true) return`)
+// dropped every event a user fired before the post-onboarding
+// disclosure modal had a chance to set them. An EXPLICIT `false`
+// the user previously saved is preserved (only `undefined` gets
+// the new default), so opt-out users stay opted out across the
+// 0.7.x → 0.8.0 upgrade.
+function applyTelemetryDefaults(prefs: AppConfigPrefs): AppConfigPrefs {
+  if (prefs.telemetry === undefined) {
+    return {
+      ...prefs,
+      telemetry: { metrics: true, content: true, artifactManifest: false },
+    };
+  }
+  return prefs;
+}
+
 export async function readAppConfig(dataDir: string): Promise<AppConfigPrefs> {
   const base = await readAppConfigFileOnly(dataDir);
   // Channel-root installation file is the new authoritative source for the
@@ -348,7 +368,7 @@ export async function readAppConfig(dataDir: string): Promise<AppConfigPrefs> {
   const installationDir = resolveInstallationDir(dataDir);
   const installation = await readInstallationFile(installationDir);
   if (typeof installation.installationId === 'string' && installation.installationId.length > 0) {
-    return { ...base, installationId: installation.installationId };
+    return applyTelemetryDefaults({ ...base, installationId: installation.installationId });
   }
   if (typeof base.installationId === 'string' && base.installationId.length > 0) {
     // Best-effort migration. A write failure here doesn't break the read —
@@ -360,7 +380,7 @@ export async function readAppConfig(dataDir: string): Promise<AppConfigPrefs> {
       // swallow — observability beats correctness on this path
     }
   }
-  return base;
+  return applyTelemetryDefaults(base);
 }
 
 async function readAppConfigFileOnly(dataDir: string): Promise<AppConfigPrefs> {
