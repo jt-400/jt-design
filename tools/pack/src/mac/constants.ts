@@ -1,14 +1,14 @@
 export const PRODUCT_NAME = "Open Design";
 
 export const INTERNAL_PACKAGES = [
-  { directory: "packages/contracts", name: "@open-design/contracts" },
-  { directory: "packages/sidecar-proto", name: "@open-design/sidecar-proto" },
-  { directory: "packages/sidecar", name: "@open-design/sidecar" },
-  { directory: "packages/platform", name: "@open-design/platform" },
-  { directory: "apps/daemon", name: "@open-design/daemon" },
-  { directory: "apps/web", name: "@open-design/web" },
-  { directory: "apps/desktop", name: "@open-design/desktop" },
-  { directory: "apps/packaged", name: "@open-design/packaged" },
+  { directory: "packages/contracts", name: "@jt-design/contracts" },
+  { directory: "packages/sidecar-proto", name: "@jt-design/sidecar-proto" },
+  { directory: "packages/sidecar", name: "@jt-design/sidecar" },
+  { directory: "packages/platform", name: "@jt-design/platform" },
+  { directory: "apps/daemon", name: "@jt-design/daemon" },
+  { directory: "apps/web", name: "@jt-design/web" },
+  { directory: "apps/desktop", name: "@jt-design/desktop" },
+  { directory: "apps/packaged", name: "@jt-design/packaged" },
 ] as const;
 
 export const DESKTOP_LOG_ECHO_ENV = "OD_DESKTOP_LOG_ECHO";

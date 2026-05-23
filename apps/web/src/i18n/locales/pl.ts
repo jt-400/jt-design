@@ -39,13 +39,13 @@ export const pl: Dict = {
   'common.daysShort': '{n}d',
   'common.untitled': 'Bez tytułu',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'JT Design',
   'app.brandPill': 'Wersja badawcza',
   'app.brandSubtitle': 'od Nexu Labs',
   'app.welcomeLoading': 'Ładowanie obszaru roboczego…',
 
   'settings.welcomeKicker': 'Witaj',
-  'settings.welcomeTitle': 'Skonfiguruj Open Design',
+  'settings.welcomeTitle': 'Skonfiguruj JT Design',
   'settings.welcomeSubtitle':
       "Wybierz sposób generowania projektów. Możesz to zmienić w dowolnym momencie w Ustawieniach na górnym pasku.",
   'settings.kicker': 'Ustawienia',
@@ -88,10 +88,10 @@ export const pl: Dict = {
   'settings.agentInstall.install': 'Zainstaluj',
   'settings.agentInstall.docs': 'Dokumentacja',
   'settings.agentInstall.pathHint':
-    'Jeśli zainstalowano CLI przez npm lub Homebrew, ale nadal widnieje jako niezainstalowana, upewnij się, że katalog bin narzędzia jest w PATH dziedziczonym przez daemon Open Design (na macOS PATH w Terminalu i aplikacjach GUI może się różnić). Zobacz QUICKSTART.md (sekcja "Local agent CLI and PATH").',
+    'Jeśli zainstalowano CLI przez npm lub Homebrew, ale nadal widnieje jako niezainstalowana, upewnij się, że katalog bin narzędzia jest w PATH dziedziczonym przez daemon JT Design (na macOS PATH w Terminalu i aplikacjach GUI może się różnić). Zobacz QUICKSTART.md (sekcja "Local agent CLI and PATH").',
   'settings.agentInstall.stepOpenLinks': 'Otwórz Zainstaluj lub Dokumentacja dla wybranego agenta.',
   'settings.agentInstall.stepAuth':
-    'Uwierzytelnij się w CLI dostawcy (zaloguj się lub dodaj dane API), zanim wrócisz do Open Design.',
+    'Uwierzytelnij się w CLI dostawcy (zaloguj się lub dodaj dane API), zanim wrócisz do JT Design.',
   'settings.agentInstall.stepRescan': 'Kliknij Ponów skanowanie w tej sekcji.',
   'settings.agentInstall.stepSelect': 'Wybierz kartę agenta, gdy pojawi się jako zainstalowany.',
   'settings.noAgentsDetected':
@@ -147,7 +147,7 @@ export const pl: Dict = {
   'settings.mediaProvidersHint':
       'Klucze API do generowania obrazów, wideo i dźwięku. Przechowywane lokalnie i synchronizowane z lokalnym daemonem.',
   'settings.mcpServerTitle': 'Serwer MCP',
-  'settings.mcpServerHint': 'Udostępnij Open Design jako serwer MCP dla swojego agenta kodu.',
+  'settings.mcpServerHint': 'Udostępnij JT Design jako serwer MCP dla swojego agenta kodu.',
   'settings.externalMcpTitle': 'Zewnętrzny MCP',
   'settings.externalMcpHint': 'Dodaj narzędzia MCP z usług zewnętrznych (Higgsfield, GitHub, …).',
   'settings.mediaProviderApiKey': 'Klucz API',
@@ -163,9 +163,9 @@ export const pl: Dict = {
   'settings.mediaProviderReloadSuccess': 'Ustawienia dostawców mediów zostały ponownie wczytane z lokalnego demona.',
   'settings.mediaProviderLoadError': 'Nie udało się wczytać ustawień dostawców mediów z lokalnego demona. Na razie używane będą ustawienia zapisane w przeglądarce.',
   'settings.privacy': 'Privacy',
-  'settings.privacyHint': 'What data is shared with the Open Design team',
-  'settings.privacyConsentKicker': 'Help us improve Open Design',
-  'settings.privacyConsentLead': 'Open Design can share usage data with our team to help us improve. This includes:',
+  'settings.privacyHint': 'What data is shared with the JT Design team',
+  'settings.privacyConsentKicker': 'Help us improve JT Design',
+  'settings.privacyConsentLead': 'JT Design can share usage data with our team to help us improve. This includes:',
   'settings.privacyConsentFooter': 'You can change either of these any time in Settings → Privacy. We never upload the contents of your generated artifact files.',
   'settings.privacyConsentShare': 'Help improve',
   'settings.privacyConsentDecline': 'Not now',
@@ -604,7 +604,7 @@ export const pl: Dict = {
   'preview.closeTitle': 'Zamknij (Esc)',
   'preview.loading': 'Ładowanie {label}…',
   'preview.errorTitle': 'Nie udało się załadować tego przykładu.',
-  'preview.errorBody': 'Nie udało się pobrać kodu HTML przykładu. Upewnij się, że Open Design jest uruchomiony, i spróbuj ponownie.',
+  'preview.errorBody': 'Nie udało się pobrać kodu HTML przykładu. Upewnij się, że JT Design jest uruchomiony, i spróbuj ponownie.',
   'preview.retry': 'Spróbuj ponownie',
   'preview.unavailableTitle': 'Brak dołączonego podglądu dla tej umiejętności.',
   'preview.unavailableBody': 'Ta umiejętność tworzy {kind} wynik — uruchom prompt w czacie, aby go wygenerować.',
@@ -978,7 +978,7 @@ export const pl: Dict = {
 
   'pet.title': 'Pupile',
   'pet.tabBuiltIn': 'Wbudowane',
-  'pet.tabBuiltInHint': 'Towarzysze dołączeni do Open Design — wybierz jednego i adoptuj.',
+  'pet.tabBuiltInHint': 'Towarzysze dołączeni do JT Design — wybierz jednego i adoptuj.',
   'pet.builtInEmpty': 'Wbudowane zwierzaki są teraz niedostępne. Odśwież zakładkę Społeczność, gdy daemon wróci.',
   'pet.tabCustom': 'Własny',
   'pet.tabCustomHint': 'Ustaw imię, glif, kolor lub wgraj sprite.',
@@ -1085,7 +1085,7 @@ export const pl: Dict = {
   'pet.communitySyncDone': 'Zsynchronizowano {wrote} nowych zwierzaków (łącznie {total}).',
   'pet.communitySyncFailed': 'Błąd synchronizacji: {error}',
   'pet.codexBundled': 'W zestawie',
-  'pet.codexBundledTitle': 'Dostarczany z Open Design — bez pobierania.',
+  'pet.codexBundledTitle': 'Dostarczany z JT Design — bez pobierania.',
 
   'settings.notifications': 'Powiadomienia',
   'settings.notificationsHint': 'Dźwięk i powiadomienie pulpitu po zakończeniu zadania',

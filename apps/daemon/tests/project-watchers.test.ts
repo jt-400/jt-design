@@ -155,7 +155,7 @@ describe('project-watchers (real chokidar)', () => {
     // The ignore predicate must not match the watch root's ancestor directories,
     // only segments inside the watched tree.
     const dataRoot = await mkdtemp(path.join(tmpdir(), 'od-data-'));
-    const projectsRoot = path.join(dataRoot, '.od', 'projects');
+    const projectsRoot = path.join(dataRoot, '.jtd', 'projects');
     const projectId = 'proj-' + Math.random().toString(36).slice(2, 10);
     await mkdir(path.join(projectsRoot, projectId, 'prototype'), { recursive: true });
 
@@ -183,8 +183,8 @@ describe('project-watchers (real chokidar)', () => {
     await sub.ready;
 
     try {
-      await mkdir(path.join(root, projectId, '.od'), { recursive: true });
-      await writeFile(path.join(root, projectId, '.od', 'state.json'), '{}');
+      await mkdir(path.join(root, projectId, '.jtd'), { recursive: true });
+      await writeFile(path.join(root, projectId, '.jtd', 'state.json'), '{}');
       await mkdir(path.join(root, projectId, 'node_modules'), { recursive: true });
       await writeFile(path.join(root, projectId, 'node_modules', 'x.js'), '');
 

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type { DesktopExportPdfInput, DesktopExportPdfResult } from '@open-design/sidecar-proto';
+import type { DesktopExportPdfInput, DesktopExportPdfResult } from '@jt-design/sidecar-proto';
 import express from 'express';
 import multer from 'multer';
 import { execFile, spawn } from 'node:child_process';
@@ -16,8 +16,8 @@ import {
   shouldRenderCodexImagegenOverride,
 } from './prompts/system.js';
 import { expandHomePrefix, resolveProjectRelativePath } from './home-expansion.js';
-import { createCommandInvocation } from '@open-design/platform';
-import { SIDECAR_DEFAULTS, SIDECAR_ENV } from '@open-design/sidecar-proto';
+import { createCommandInvocation } from '@jt-design/platform';
+import { SIDECAR_DEFAULTS, SIDECAR_ENV } from '@jt-design/sidecar-proto';
 import {
   buildLiveArtifactsMcpServersForAgent,
   checkPromptArgvBudget,
@@ -229,13 +229,13 @@ import {
   isLocalSameOrigin,
 } from './origin-validation.js';
 
-/** @typedef {import('@open-design/contracts').ApiErrorCode} ApiErrorCode */
-/** @typedef {import('@open-design/contracts').ApiError} ApiError */
-/** @typedef {import('@open-design/contracts').ApiErrorResponse} ApiErrorResponse */
-/** @typedef {import('@open-design/contracts').ChatRequest} ChatRequest */
-/** @typedef {import('@open-design/contracts').ChatSseEvent} ChatSseEvent */
-/** @typedef {import('@open-design/contracts').ProxyStreamRequest} ProxyStreamRequest */
-/** @typedef {import('@open-design/contracts').ProxySseEvent} ProxySseEvent */
+/** @typedef {import('@jt-design/contracts').ApiErrorCode} ApiErrorCode */
+/** @typedef {import('@jt-design/contracts').ApiError} ApiError */
+/** @typedef {import('@jt-design/contracts').ApiErrorResponse} ApiErrorResponse */
+/** @typedef {import('@jt-design/contracts').ChatRequest} ChatRequest */
+/** @typedef {import('@jt-design/contracts').ChatSseEvent} ChatSseEvent */
+/** @typedef {import('@jt-design/contracts').ProxyStreamRequest} ProxyStreamRequest */
+/** @typedef {import('@jt-design/contracts').ProxySseEvent} ProxySseEvent */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -258,7 +258,7 @@ export function resolveDaemonCliPath(env: NodeJS.ProcessEnv = process.env): stri
   const configured = cleanOptionalPath(env[DAEMON_CLI_PATH_ENV]) ?? cleanOptionalPath(env.OD_BIN);
   if (configured) return configured;
 
-  const packageJsonPath = require.resolve('@open-design/daemon/package.json');
+  const packageJsonPath = require.resolve('@jt-design/daemon/package.json');
   return path.join(path.dirname(packageJsonPath), 'dist', 'cli.js');
 }
 
@@ -779,7 +779,7 @@ const PROMPT_TEMPLATES_DIR = resolveDaemonResourceDir(
   path.join(PROJECT_ROOT, 'prompt-templates'),
 );
 export function resolveDataDir(raw, projectRoot) {
-  if (!raw) return path.join(projectRoot, '.od');
+  if (!raw) return path.join(projectRoot, '.jtd');
   // expandHomePrefix is shared with media-config.ts so OD_DATA_DIR and
   // OD_MEDIA_CONFIG_DIR can never split state under a $HOME-style value.
   // Some launchers (systemd unit files, NixOS modules, certain Docker
@@ -832,7 +832,7 @@ const RUNTIME_DATA_DIR_CANONICAL = (() => {
 // new data root is fresh (no app.sqlite), copy the 0.3.x .od/ payload
 // across before SQLite opens. Synchronous on purpose: openDatabase below
 // would race an async copy. See apps/daemon/src/legacy-data-migrator.ts
-// and https://github.com/nexu-io/open-design/issues/710.
+// and https://github.com/tuatahi.art/issues/710.
 migrateLegacyDataDirSync({
   legacyDir: process.env.OD_LEGACY_DATA_DIR,
   dataDir: RUNTIME_DATA_DIR,
@@ -1036,7 +1036,7 @@ export function createAgentRuntimeToolPrompt(
     '',
     `- Daemon URL: \`${daemonUrl}\` (also available as \`OD_DAEMON_URL\`).`,
     '- `OD_NODE_BIN` is the absolute path to the Node-compatible runtime that started the daemon; packaged desktop installs provide this even when the user has no system `node` on PATH.',
-    '- `OD_BIN` is the absolute path to the Open Design CLI script. On POSIX shells run wrappers with `"$OD_NODE_BIN" "$OD_BIN" tools ...`; do not call bare `od`, which may resolve to the system octal-dump command on Unix-like systems.',
+    '- `OD_BIN` is the absolute path to the JT Design CLI script. On POSIX shells run wrappers with `"$OD_NODE_BIN" "$OD_BIN" tools ...`; do not call bare `od`, which may resolve to the system octal-dump command on Unix-like systems.',
     '- On PowerShell use `& $env:OD_NODE_BIN $env:OD_BIN tools ...`; on cmd.exe use `"%OD_NODE_BIN%" "%OD_BIN%" tools ...`.',
     tokenLine,
     '- Prefer project wrapper commands through `OD_NODE_BIN` + `OD_BIN` over raw HTTP. The wrappers read these environment values automatically.',
@@ -1386,7 +1386,7 @@ function renderOAuthResultPage(opts) {
   const title = ok ? 'Connected' : 'Authorization failed';
   const heading = ok ? '✅ Connected' : '⚠️ Authorization failed';
   const body = ok
-    ? `Your MCP server <code>${escapeHtml(opts.serverId ?? '')}</code> is now connected. You can close this tab and return to Open Design.`
+    ? `Your MCP server <code>${escapeHtml(opts.serverId ?? '')}</code> is now connected. You can close this tab and return to JT Design.`
     : escapeHtml(opts.message ?? 'Authorization could not be completed.');
   const accent = ok ? '#1a7f37' : '#cf222e';
   const payload = ok
@@ -1396,7 +1396,7 @@ function renderOAuthResultPage(opts) {
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(title)} — Open Design</title>
+<title>${escapeHtml(title)} — JT Design</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root { color-scheme: light dark; }
@@ -2117,7 +2117,7 @@ export async function startServer({
 
   // ---- Projects (DB-backed) -------------------------------------------------
 
-  // Soft "what is the user looking at right now in Open Design?" channel. The
+  // Soft "what is the user looking at right now in JT Design?" channel. The
   // web UI POSTs the current project + file on every route change;
   // the MCP surface reads it so a coding agent in another repo can
   // resolve "the design I have open" without the user typing the
@@ -2244,7 +2244,7 @@ export async function startServer({
     res.json(payload);
   });
 
-  // External MCP server configuration. Open Design connects to these as a
+  // External MCP server configuration. JT Design connects to these as a
   // CLIENT and surfaces their tools to the underlying agent at spawn time.
   // GET returns user-saved entries plus the built-in template list so the UI
   // can render the "Add MCP server" picker without a second round-trip.
@@ -2468,7 +2468,7 @@ export async function startServer({
           }
         }
       }
-      /** @type {import('@open-design/contracts').ProjectsResponse} */
+      /** @type {import('@jt-design/contracts').ProjectsResponse} */
       const body = {
         projects: listProjects(db).map((project) => ({
           ...project,
@@ -2586,7 +2586,7 @@ export async function startServer({
           }
         }
       }
-      /** @type {import('@open-design/contracts').CreateProjectResponse} */
+      /** @type {import('@jt-design/contracts').CreateProjectResponse} */
       const body = { project, conversationId: cid };
       res.json(body);
     } catch (err) {
@@ -2737,7 +2737,7 @@ export async function startServer({
         updatedAt: now,
       });
       if (entryFile) setTabs(db, id, [entryFile], entryFile);
-      /** @type {import('@open-design/contracts').ImportFolderResponse} */
+      /** @type {import('@jt-design/contracts').ImportFolderResponse} */
       const body = { project, conversationId: cid, entryFile };
       res.json(body);
     } catch (err) {
@@ -2749,7 +2749,7 @@ export async function startServer({
     const project = getProject(db, req.params.id);
     if (!project)
       return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
-    /** @type {import('@open-design/contracts').ProjectResponse} */
+    /** @type {import('@jt-design/contracts').ProjectResponse} */
     const body = { project };
     res.json(body);
   });
@@ -2806,7 +2806,7 @@ export async function startServer({
       const project = updateProject(db, req.params.id, patch);
       if (!project)
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
-      /** @type {import('@open-design/contracts').ProjectResponse} */
+      /** @type {import('@jt-design/contracts').ProjectResponse} */
       const body = { project };
       res.json(body);
     } catch (err) {
@@ -2818,7 +2818,7 @@ export async function startServer({
     try {
       dbDeleteProject(db, req.params.id);
       await removeProjectDir(PROJECTS_DIR, req.params.id).catch(() => {});
-      /** @type {import('@open-design/contracts').OkResponse} */
+      /** @type {import('@jt-design/contracts').OkResponse} */
       const body = { ok: true };
       res.json(body);
     } catch (err) {
@@ -3951,7 +3951,7 @@ export async function startServer({
       if (!isDeployProviderId(providerId)) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'unsupported deploy provider');
       }
-      /** @type {import('@open-design/contracts').DeployConfigResponse} */
+      /** @type {import('@jt-design/contracts').DeployConfigResponse} */
       const body = publicDeployConfigForProvider(providerId, await readDeployConfig(providerId));
       res.json(body);
     } catch (err) {
@@ -3967,7 +3967,7 @@ export async function startServer({
       if (!isDeployProviderId(providerId)) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'unsupported deploy provider');
       }
-      /** @type {import('@open-design/contracts').DeployConfigResponse} */
+      /** @type {import('@jt-design/contracts').DeployConfigResponse} */
       const body = await writeDeployConfig(providerId, input);
       res.json(body);
     } catch (err) {
@@ -3977,7 +3977,7 @@ export async function startServer({
 
   app.get('/api/deploy/cloudflare-pages/zones', async (_req, res) => {
     try {
-      /** @type {import('@open-design/contracts').CloudflarePagesZonesResponse} */
+      /** @type {import('@jt-design/contracts').CloudflarePagesZonesResponse} */
       const body = await listCloudflarePagesZones(await readDeployConfig(CLOUDFLARE_PAGES_PROVIDER_ID));
       res.json(body);
     } catch (err) {
@@ -3992,7 +3992,7 @@ export async function startServer({
 
   app.get('/api/projects/:id/deployments', (req, res) => {
     try {
-      /** @type {import('@open-design/contracts').ProjectDeploymentsResponse} */
+      /** @type {import('@jt-design/contracts').ProjectDeploymentsResponse} */
       const body = { deployments: publicDeployments(listDeployments(db, req.params.id)) };
       res.json(body);
     } catch (err) {
@@ -4045,7 +4045,7 @@ export async function startServer({
             projectId: req.params.id,
           });
       const now = Date.now();
-      /** @type {import('@open-design/contracts').DeployProjectFileResponse} */
+      /** @type {import('@jt-design/contracts').DeployProjectFileResponse} */
       const body = upsertDeployment(db, {
         id: prior?.id ?? randomUUID(),
         projectId: req.params.id,
@@ -4098,7 +4098,7 @@ export async function startServer({
         return sendApiError(res, 400, 'BAD_REQUEST', 'fileName required');
       }
       const preflightProject = getProject(db, req.params.id);
-      /** @type {import('@open-design/contracts').DeployPreflightResponse} */
+      /** @type {import('@jt-design/contracts').DeployPreflightResponse} */
       const body = await prepareDeployPreflight(
         PROJECTS_DIR,
         req.params.id,
@@ -4243,7 +4243,7 @@ export async function startServer({
         if (existing.providerId === CLOUDFLARE_PAGES_PROVIDER_ID && existing.cloudflarePages?.pagesDev?.url) {
           const checked = await checkCloudflarePagesDeploymentLinks(existing);
           const now = Date.now();
-          /** @type {import('@open-design/contracts').CheckDeploymentLinkResponse} */
+          /** @type {import('@jt-design/contracts').CheckDeploymentLinkResponse} */
           const body = upsertDeployment(db, {
             ...existing,
             ...checked,
@@ -4257,7 +4257,7 @@ export async function startServer({
           : existing.url;
         const result = await checkDeploymentUrl(checkUrl);
         const now = Date.now();
-        /** @type {import('@open-design/contracts').CheckDeploymentLinkResponse} */
+        /** @type {import('@jt-design/contracts').CheckDeploymentLinkResponse} */
         const body = upsertDeployment(db, {
           ...existing,
           url: checkUrl || existing.url,
@@ -4294,7 +4294,7 @@ export async function startServer({
         since: Number.isFinite(since) ? since : undefined,
         metadata: project?.metadata,
       });
-      /** @type {import('@open-design/contracts').ProjectFilesResponse} */
+      /** @type {import('@jt-design/contracts').ProjectFilesResponse} */
       const body = { files };
       res.json(body);
     } catch (err) {
@@ -4477,7 +4477,7 @@ export async function startServer({
     try {
       const project = getProject(db, req.params.id);
       await deleteProjectFile(PROJECTS_DIR, req.params.id, req.params[0], project?.metadata);
-      /** @type {import('@open-design/contracts').DeleteProjectFileResponse} */
+      /** @type {import('@jt-design/contracts').DeleteProjectFileResponse} */
       const body = { ok: true };
       res.json(body);
     } catch (err) {
@@ -4568,7 +4568,7 @@ export async function startServer({
             uploadProject?.metadata,
           );
           fs.promises.unlink(req.file.path).catch(() => {});
-          /** @type {import('@open-design/contracts').ProjectFileResponse} */
+          /** @type {import('@jt-design/contracts').ProjectFileResponse} */
           const body = { file: meta };
           return res.json(body);
         }
@@ -4607,7 +4607,7 @@ export async function startServer({
           { artifactManifest },
           uploadProject?.metadata,
         );
-        /** @type {import('@open-design/contracts').ProjectFileResponse} */
+        /** @type {import('@jt-design/contracts').ProjectFileResponse} */
         const body = { file: meta };
         res.json(body);
       } catch (err) {
@@ -4630,7 +4630,7 @@ export async function startServer({
         to,
         project?.metadata,
       );
-      /** @type {import('@open-design/contracts').RenameProjectFileResponse} */
+      /** @type {import('@jt-design/contracts').RenameProjectFileResponse} */
       const body = result;
       res.json(body);
     } catch (err) {
@@ -4649,7 +4649,7 @@ export async function startServer({
     try {
       const delProject = getProject(db, req.params.id);
       await deleteProjectFile(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
-      /** @type {import('@open-design/contracts').DeleteProjectFileResponse} */
+      /** @type {import('@jt-design/contracts').DeleteProjectFileResponse} */
       const body = { ok: true };
       res.json(body);
     } catch (err) {
@@ -5334,7 +5334,7 @@ export async function startServer({
             // skip files that vanished mid-flight
           }
         }
-        /** @type {import('@open-design/contracts').UploadProjectFilesResponse} */
+        /** @type {import('@jt-design/contracts').UploadProjectFilesResponse} */
         const body = { files: out };
         res.json(body);
       } catch (err) {
@@ -5867,7 +5867,7 @@ export async function startServer({
     });
 
     // External MCP servers configured by the user in Settings → External MCP.
-    // Open Design relays them to the agent so the model can call those tools.
+    // JT Design relays them to the agent so the model can call those tools.
     // Two delivery shapes today:
     //   - Claude Code: write a `.mcp.json` into the project cwd. Claude Code
     //     auto-loads that file at spawn (same format the CLI accepts via
@@ -6612,7 +6612,7 @@ export async function startServer({
       systemPrompt: [
         renderOrbitTemplateSystemPrompt(template),
         systemPrompt,
-        'You are Orbit, an autonomous activity-summary agent inside Open Design.',
+        'You are Orbit, an autonomous activity-summary agent inside JT Design.',
         'You must discover connectors and connector tools yourself through the OD CLI; the daemon has not chosen tools for you.',
         'You must create and register a Live Artifact as the final deliverable. Do not merely describe what you would do.',
         'Do not ask follow-up questions, do not emit <question-form>, and do not wait for user input. This run is unattended; pick reasonable defaults and complete the artifact.',
@@ -6670,7 +6670,7 @@ export async function startServer({
       const ua = String(req.get('user-agent') ?? '');
       run.clientType = ua.includes('Electron/') ? 'desktop' : 'web';
     }
-    /** @type {import('@open-design/contracts').ChatRunCreateResponse} */
+    /** @type {import('@jt-design/contracts').ChatRunCreateResponse} */
     const body = { runId: run.id };
     res.status(202).json(body);
     design.runs.start(run, () => startChatRun(req.body || {}, run));
@@ -6679,7 +6679,7 @@ export async function startServer({
   app.get('/api/runs', (req, res) => {
     const { projectId, conversationId, status } = req.query;
     const runs = design.runs.list({ projectId, conversationId, status });
-    /** @type {import('@open-design/contracts').ChatRunListResponse} */
+    /** @type {import('@jt-design/contracts').ChatRunListResponse} */
     const body = { runs: runs.map(design.runs.statusBody) };
     res.json(body);
   });
@@ -6700,7 +6700,7 @@ export async function startServer({
     const run = design.runs.get(req.params.id);
     if (!run) return sendApiError(res, 404, 'NOT_FOUND', 'run not found');
     design.runs.cancel(run);
-    /** @type {import('@open-design/contracts').ChatRunCancelResponse} */
+    /** @type {import('@jt-design/contracts').ChatRunCancelResponse} */
     const body = { ok: true };
     res.json(body);
   });
@@ -7676,7 +7676,7 @@ function assembleExample(templateHtml, slidesHtml, title) {
     .replace('<!-- SLIDES_HERE -->', slidesHtml)
     .replace(
       /<title>.*?<\/title>/,
-      `<title>${title} | Open Design Example</title>`,
+      `<title>${title} | JT Design Example</title>`,
     );
 }
 

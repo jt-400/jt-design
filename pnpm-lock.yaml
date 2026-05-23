@@ -8,10 +8,10 @@ importers:
 
   .:
     devDependencies:
-      '@open-design/tools-dev':
+      '@jt-design/tools-dev':
         specifier: workspace:*
         version: link:tools/dev
-      '@open-design/tools-pack':
+      '@jt-design/tools-pack':
         specifier: workspace:*
         version: link:tools/pack
       '@types/node':
@@ -26,21 +26,21 @@ importers:
 
   apps/daemon:
     dependencies:
+      '@jt-design/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@jt-design/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
+      '@jt-design/sidecar':
+        specifier: workspace:*
+        version: link:../../packages/sidecar
+      '@jt-design/sidecar-proto':
+        specifier: workspace:*
+        version: link:../../packages/sidecar-proto
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@4.4.2)
-      '@open-design/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@open-design/platform':
-        specifier: workspace:*
-        version: link:../../packages/platform
-      '@open-design/sidecar':
-        specifier: workspace:*
-        version: link:../../packages/sidecar
-      '@open-design/sidecar-proto':
-        specifier: workspace:*
-        version: link:../../packages/sidecar-proto
       better-sqlite3:
         specifier: ^12.9.0
         version: 12.9.0
@@ -84,13 +84,13 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@open-design/platform':
+      '@jt-design/platform':
         specifier: workspace:*
         version: link:../../packages/platform
-      '@open-design/sidecar':
+      '@jt-design/sidecar':
         specifier: workspace:*
         version: link:../../packages/sidecar
-      '@open-design/sidecar-proto':
+      '@jt-design/sidecar-proto':
         specifier: workspace:*
         version: link:../../packages/sidecar-proto
     devDependencies:
@@ -137,22 +137,22 @@ importers:
 
   apps/packaged:
     dependencies:
-      '@open-design/daemon':
+      '@jt-design/daemon':
         specifier: workspace:*
         version: link:../daemon
-      '@open-design/desktop':
+      '@jt-design/desktop':
         specifier: workspace:*
         version: link:../desktop
-      '@open-design/platform':
+      '@jt-design/platform':
         specifier: workspace:*
         version: link:../../packages/platform
-      '@open-design/sidecar':
+      '@jt-design/sidecar':
         specifier: workspace:*
         version: link:../../packages/sidecar
-      '@open-design/sidecar-proto':
+      '@jt-design/sidecar-proto':
         specifier: workspace:*
         version: link:../../packages/sidecar-proto
-      '@open-design/web':
+      '@jt-design/web':
         specifier: workspace:*
         version: link:../web
     devDependencies:
@@ -177,16 +177,16 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.1
         version: 0.32.1
-      '@open-design/contracts':
+      '@jt-design/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@open-design/platform':
+      '@jt-design/platform':
         specifier: workspace:*
         version: link:../../packages/platform
-      '@open-design/sidecar':
+      '@jt-design/sidecar':
         specifier: workspace:*
         version: link:../../packages/sidecar
-      '@open-design/sidecar-proto':
+      '@jt-design/sidecar-proto':
         specifier: workspace:*
         version: link:../../packages/sidecar-proto
       next:
@@ -308,13 +308,13 @@ importers:
 
   tools/dev:
     dependencies:
-      '@open-design/platform':
+      '@jt-design/platform':
         specifier: workspace:*
         version: link:../../packages/platform
-      '@open-design/sidecar':
+      '@jt-design/sidecar':
         specifier: workspace:*
         version: link:../../packages/sidecar
-      '@open-design/sidecar-proto':
+      '@jt-design/sidecar-proto':
         specifier: workspace:*
         version: link:../../packages/sidecar-proto
       cac:
@@ -342,13 +342,13 @@ importers:
       '@electron/rebuild':
         specifier: 4.0.4
         version: 4.0.4
-      '@open-design/platform':
+      '@jt-design/platform':
         specifier: workspace:*
         version: link:../../packages/platform
-      '@open-design/sidecar':
+      '@jt-design/sidecar':
         specifier: workspace:*
         version: link:../../packages/sidecar
-      '@open-design/sidecar-proto':
+      '@jt-design/sidecar-proto':
         specifier: workspace:*
         version: link:../../packages/sidecar-proto
       cac:

@@ -124,7 +124,7 @@ function configFile(projectRoot: string): string {
   const dir =
     envOverrideDir('OD_MEDIA_CONFIG_DIR', projectRoot)
     ?? envOverrideDir('OD_DATA_DIR', projectRoot)
-    ?? path.join(projectRoot, '.od');
+    ?? path.join(projectRoot, '.jtd');
   return path.join(dir, 'media-config.json');
 }
 

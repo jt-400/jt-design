@@ -19,7 +19,7 @@ import { projectDir, resolveProjectDir } from './projects.js';
 const IGNORE_NAMES = new Set([
   '.git',
   'node_modules',
-  '.od',
+  '.jtd',
   'debug',
   '.DS_Store',
   // Python virtual environments and caches — can contain tens of thousands of

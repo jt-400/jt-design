@@ -39,13 +39,13 @@ export const ru: Dict = {
   'common.daysShort': '{n}д',
   'common.untitled': 'Без названия',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'JT Design',
   'app.brandPill': 'Предварительная исследовательская версия',
   'app.brandSubtitle': 'от Nexu Labs',
   'app.welcomeLoading': 'Загрузка рабочего пространства…',
 
   'settings.welcomeKicker': 'Добро пожаловать',
-  'settings.welcomeTitle': 'Настройте Open Design',
+  'settings.welcomeTitle': 'Настройте JT Design',
   'settings.welcomeSubtitle':
     'Выберите, как запускать генерации. Вы можете изменить это в любое время через кнопку Настройки в верхней панели.',
   'settings.kicker': 'Настройки',
@@ -88,10 +88,10 @@ export const ru: Dict = {
   'settings.agentInstall.install': 'Установить',
   'settings.agentInstall.docs': 'Документация',
   'settings.agentInstall.pathHint':
-    'Если вы установили CLI через npm или Homebrew, но она всё ещё отмечена как не установленная, убедитесь, что bin-каталог инструмента есть в PATH, который наследует daemon Open Design (в macOS PATH у Terminal и GUI-приложений может отличаться). См. QUICKSTART.md (раздел "Local agent CLI and PATH").',
+    'Если вы установили CLI через npm или Homebrew, но она всё ещё отмечена как не установленная, убедитесь, что bin-каталог инструмента есть в PATH, который наследует daemon JT Design (в macOS PATH у Terminal и GUI-приложений может отличаться). См. QUICKSTART.md (раздел "Local agent CLI and PATH").',
   'settings.agentInstall.stepOpenLinks': 'Откройте Установить или Документация для нужного агента.',
   'settings.agentInstall.stepAuth':
-    'Пройдите аутентификацию в CLI поставщика (вход или добавление API-ключей), затем вернитесь в Open Design.',
+    'Пройдите аутентификацию в CLI поставщика (вход или добавление API-ключей), затем вернитесь в JT Design.',
   'settings.agentInstall.stepRescan': 'Нажмите «Пересканировать» в этом разделе.',
   'settings.agentInstall.stepSelect': 'Выберите карточку агента, когда он появится как установленный.',
   'settings.noAgentsDetected':
@@ -146,7 +146,7 @@ export const ru: Dict = {
   'settings.mediaProviders': 'Медиа-провайдеры',
   'settings.mediaProvidersHint': 'API-ключи для генерации изображений, видео и аудио. Хранятся локально и синхронизируются с локальным демоном.',
   'settings.mcpServerTitle': 'MCP-сервер',
-  'settings.mcpServerHint': 'Откройте Open Design как MCP-сервер для вашего кодинг-агента.',
+  'settings.mcpServerHint': 'Откройте JT Design как MCP-сервер для вашего кодинг-агента.',
   'settings.externalMcpTitle': 'Внешний MCP',
   'settings.externalMcpHint': 'Добавьте MCP-инструменты из внешних сервисов (Higgsfield, GitHub, …).',
   'settings.mediaProviderApiKey': 'API-ключ',
@@ -162,9 +162,9 @@ export const ru: Dict = {
   'settings.mediaProviderReloadSuccess': 'Настройки медиапровайдеров заново загружены из локального демона.',
   'settings.mediaProviderLoadError': 'Не удалось загрузить настройки медиапровайдеров из локального демона. Пока используются настройки, сохранённые в браузере.',
   'settings.privacy': 'Privacy',
-  'settings.privacyHint': 'What data is shared with the Open Design team',
-  'settings.privacyConsentKicker': 'Help us improve Open Design',
-  'settings.privacyConsentLead': 'Open Design can share usage data with our team to help us improve. This includes:',
+  'settings.privacyHint': 'What data is shared with the JT Design team',
+  'settings.privacyConsentKicker': 'Help us improve JT Design',
+  'settings.privacyConsentLead': 'JT Design can share usage data with our team to help us improve. This includes:',
   'settings.privacyConsentFooter': 'You can change either of these any time in Settings → Privacy. We never upload the contents of your generated artifact files.',
   'settings.privacyConsentShare': 'Help improve',
   'settings.privacyConsentDecline': 'Not now',
@@ -616,7 +616,7 @@ export const ru: Dict = {
   'preview.closeTitle': 'Закрыть (Esc)',
   'preview.loading': 'Загрузка {label}…',
   'preview.errorTitle': 'Не удалось загрузить этот пример.',
-  'preview.errorBody': 'Не удалось получить HTML примера. Убедитесь, что Open Design запущен, и повторите попытку.',
+  'preview.errorBody': 'Не удалось получить HTML примера. Убедитесь, что JT Design запущен, и повторите попытку.',
   'preview.retry': 'Повторить',
   'preview.unavailableTitle': 'Для этого навыка нет встроенного предпросмотра.',
   'preview.unavailableBody': 'Этот навык создаёт {kind}-вывод — запустите запрос в чате, чтобы сгенерировать его.',
@@ -1010,7 +1010,7 @@ export const ru: Dict = {
 
   'pet.title': 'Питомцы',
   'pet.tabBuiltIn': 'Встроенные',
-  'pet.tabBuiltInHint': 'Подобранные питомцы в комплекте Open Design — выберите и забирайте.',
+  'pet.tabBuiltInHint': 'Подобранные питомцы в комплекте JT Design — выберите и забирайте.',
   'pet.builtInEmpty': 'Встроенные питомцы сейчас недоступны. Обновите вкладку «Сообщество», когда демон снова запустится.',
   'pet.tabCustom': 'Свой',
   'pet.tabCustomHint': 'Своё имя, глиф, цвет или загруженный спрайт.',
@@ -1117,7 +1117,7 @@ export const ru: Dict = {
   'pet.communitySyncDone': 'Синхронизировано {wrote} новых питомцев (всего {total}).',
   'pet.communitySyncFailed': 'Ошибка синхронизации: {error}',
   'pet.codexBundled': 'Встроен',
-  'pet.codexBundledTitle': 'Поставляется с Open Design — загрузка не нужна.',
+  'pet.codexBundledTitle': 'Поставляется с JT Design — загрузка не нужна.',
 
   'settings.notifications': 'Уведомления',
   'settings.notificationsHint': 'Звук и уведомление при завершении задачи',

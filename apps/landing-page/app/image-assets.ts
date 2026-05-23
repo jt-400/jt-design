@@ -1,4 +1,4 @@
-const R2_PUBLIC_ORIGIN = 'https://static.open-design.ai';
+const R2_PUBLIC_ORIGIN = 'https://static.tuatahi.art';
 const IMAGE_RESIZING_ORIGIN = R2_PUBLIC_ORIGIN;
 const ASSET_PREFIX = 'landing/assets';
 

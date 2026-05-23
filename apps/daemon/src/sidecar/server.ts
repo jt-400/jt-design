@@ -10,14 +10,14 @@ import {
   type DesktopExportPdfInput,
   type DesktopExportPdfResult,
   type SidecarStamp,
-} from "@open-design/sidecar-proto";
+} from "@jt-design/sidecar-proto";
 import {
   createJsonIpcServer,
   requestJsonIpc,
   resolveAppIpcPath,
   type JsonIpcServerHandle,
   type SidecarRuntimeContext,
-} from "@open-design/sidecar";
+} from "@jt-design/sidecar";
 
 import { startServer } from "../server.js";
 

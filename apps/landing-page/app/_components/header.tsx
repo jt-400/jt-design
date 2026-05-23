@@ -1,14 +1,13 @@
 /*
  * Sticky Header — static markup rendered at build time. Headroom-style
- * hide/show and the live GitHub star count are attached by the tiny inline
- * script in `app/pages/index.astro`, so this marketing page ships no React
- * runtime to the browser.
+ * hide/show is attached by the tiny inline script in the page component.
  */
 
-const REPO = 'https://github.com/nexu-io/open-design';
-const REPO_RELEASES = `${REPO}/releases`;
-const REPO_SKILLS = `${REPO}/tree/main/skills`;
-const REPO_DESIGN_SYSTEMS = `${REPO}/tree/main/design-systems`;
+const SITE = 'https://tuatahi.art';
+const REPO = 'https://tuatahi.art';
+const REPO_RELEASES = `${SITE}/download`;
+const REPO_SKILLS = `${SITE}/#skills`;
+const REPO_DESIGN_SYSTEMS = `${SITE}/#systems`;
 
 const ext = {
   target: '_blank',
@@ -20,10 +19,10 @@ export function Header() {
     <header className='nav' data-od-id='nav' data-nav-headroom>
       <div className='container nav-inner'>
         <a href='#top' className='brand'>
-          <span className='brand-mark'>Ø</span>
-          <span>Open Design</span>
+          <span className='brand-mark' style={{ color: '#ff2d00', fontWeight: 800, fontSize: '1.1em', letterSpacing: '-0.02em' }}>JT</span>
+          <span>JT Design</span>
           <span className='brand-meta'>
-            <b>Studio Nº 01</b>Berlin / Open / Earth
+            <b>Studio Nº 01</b>Auckland / tuatahi.art
           </span>
         </a>
         <nav>
@@ -57,7 +56,7 @@ export function Header() {
           <a
             className='nav-cta ghost'
             href={REPO_RELEASES}
-            aria-label='Download Open Design desktop'
+            aria-label='Download JT Design desktop'
             title='Download the desktop app'
             {...ext}
           >
@@ -65,12 +64,12 @@ export function Header() {
           </a>
           <a
             className='nav-cta'
-            href={REPO}
-            aria-label='Star Open Design on GitHub'
-            title='Click to star us on GitHub'
+            href={SITE}
+            aria-label='Visit tuatahi.art'
+            title='Visit tuatahi.art'
             {...ext}
           >
-            Star · <span data-github-stars>0</span>
+            tuatahi.art
           </a>
           <span className='status-dot' aria-hidden='true' />
         </div>

@@ -72,7 +72,7 @@ export async function listFiles(projectsRoot, projectId, opts = {}) {
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', '.nuxt', '.turbo',
   '.cache', '.output', 'out', 'coverage', '__pycache__', '.venv',
-  'vendor', 'target', '.od', '.tmp',
+  'vendor', 'target', '.jtd', '.tmp',
 ]);
 
 // Best-effort entry-file detector — looks for index.html at the root,

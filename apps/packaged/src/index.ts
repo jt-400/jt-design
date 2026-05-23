@@ -4,13 +4,13 @@ import {
   SIDECAR_MODES,
   SIDECAR_SOURCES,
   type SidecarStamp,
-} from "@open-design/sidecar-proto";
+} from "@jt-design/sidecar-proto";
 import {
   bootstrapSidecarRuntime,
   createSidecarLaunchEnv,
   resolveAppIpcPath,
-} from "@open-design/sidecar";
-import { readProcessStamp } from "@open-design/platform";
+} from "@jt-design/sidecar";
+import { readProcessStamp } from "@jt-design/platform";
 import { app, dialog } from "electron";
 
 import { readPackagedConfig } from "./config.js";
@@ -90,7 +90,7 @@ async function main(): Promise<void> {
   });
   registerOdProtocol(sidecars.web.url ?? "http://127.0.0.1:0");
 
-  const { runDesktopMain } = await import("@open-design/desktop/main");
+  const { runDesktopMain } = await import("@jt-design/desktop/main");
   await runDesktopMain(runtime, {
     async beforeShutdown() {
       try {

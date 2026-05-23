@@ -1177,9 +1177,9 @@ describe('SettingsDialog connectors interactions', () => {
 
 describe('SettingsDialog MCP server interactions', () => {
   const installInfo = {
-    command: '/Applications/Open Design.app/Contents/Resources/open-design/bin/node',
+    command: '/Applications/JT Design.app/Contents/Resources/jt-design/bin/node',
     args: [
-      '/Applications/Open Design.app/Contents/Resources/app/node_modules/@open-design/daemon/dist/cli.js',
+      '/Applications/JT Design.app/Contents/Resources/app/node_modules/@jt-design/daemon/dist/cli.js',
       'mcp',
       '--daemon-url',
       'http://127.0.0.1:51706',
@@ -1238,10 +1238,10 @@ describe('SettingsDialog MCP server interactions', () => {
 
     expect(screen.getByText(/Run this in your terminal/i)).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByText(/claude mcp add-json --scope user open-design/i)).toBeTruthy();
+      expect(screen.getByText(/claude mcp add-json --scope user jt-design/i)).toBeTruthy();
     });
     expect(screen.getByText(/Restart your client to pick up the new server/i)).toBeTruthy();
-    expect(screen.getByText(/Open Design must be running for MCP tool calls to succeed/i)).toBeTruthy();
+    expect(screen.getByText(/JT Design must be running for MCP tool calls to succeed/i)).toBeTruthy();
   });
 
   it('switches client instructions and snippet content when a different MCP client is selected', async () => {
@@ -1251,7 +1251,7 @@ describe('SettingsDialog MCP server interactions', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/claude mcp add-json --scope user open-design/i)).toBeTruthy();
+      expect(screen.getByText(/claude mcp add-json --scope user jt-design/i)).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Claude Code/i }));
@@ -1260,7 +1260,7 @@ describe('SettingsDialog MCP server interactions', () => {
     await waitFor(() => {
       expect(screen.getByText(/Append this table to ~\/\.codex\/config\.toml/i)).toBeTruthy();
     });
-    expect(screen.getByText(/\[mcp_servers\.open-design\]/i)).toBeTruthy();
+    expect(screen.getByText(/\[mcp_servers\.jt-design\]/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /Codex/i }));
     fireEvent.click(screen.getByRole('option', { name: /Cursor/i }));
@@ -1279,14 +1279,14 @@ describe('SettingsDialog MCP server interactions', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/claude mcp add-json --scope user open-design/i)).toBeTruthy();
+      expect(screen.getByText(/claude mcp add-json --scope user jt-design/i)).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy MCP configuration snippet' }));
 
     await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalledWith(
-        expect.stringContaining("claude mcp add-json --scope user open-design"),
+        expect.stringContaining("claude mcp add-json --scope user jt-design"),
       );
     });
     expect(screen.getByText('Copied')).toBeTruthy();
@@ -1311,7 +1311,7 @@ describe('SettingsDialog MCP server interactions', () => {
 describe('SettingsDialog language interactions', () => {
   afterEach(() => {
     cleanup();
-    window.localStorage.removeItem('open-design:locale');
+    window.localStorage.removeItem('jt-design:locale');
     document.documentElement.removeAttribute('lang');
     document.documentElement.removeAttribute('dir');
   });
@@ -1336,7 +1336,7 @@ describe('SettingsDialog language interactions', () => {
 
     expect(screen.queryByRole('menu')).toBeNull();
     expect(screen.getByRole('button', { name: /简体中文/i })).toBeTruthy();
-    expect(window.localStorage.getItem('open-design:locale')).toBe('zh-CN');
+    expect(window.localStorage.getItem('jt-design:locale')).toBe('zh-CN');
     expect(document.documentElement.getAttribute('lang')).toBe('zh-CN');
     expect(document.documentElement.getAttribute('dir')).toBe('ltr');
   });
@@ -1353,7 +1353,7 @@ describe('SettingsDialog language interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: /English/i }));
     fireEvent.click(await screen.findByRole('menuitemradio', { name: /فارسی/i }));
 
-    expect(window.localStorage.getItem('open-design:locale')).toBe('fa');
+    expect(window.localStorage.getItem('jt-design:locale')).toBe('fa');
     expect(document.documentElement.getAttribute('lang')).toBe('fa');
     expect(document.documentElement.getAttribute('dir')).toBe('rtl');
   });
@@ -1364,13 +1364,13 @@ describe('SettingsDialog language interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: /English/i }));
     fireEvent.click(await screen.findByRole('menuitemradio', { name: /Deutsch/i }));
 
-    expect(window.localStorage.getItem('open-design:locale')).toBe('de');
+    expect(window.localStorage.getItem('jt-design:locale')).toBe('de');
     expect(document.documentElement.getAttribute('lang')).toBe('de');
 
     fireEvent.click(screen.getByTitle(/close|schließen/i));
     expect(onPersist).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(window.localStorage.getItem('open-design:locale')).toBe('de');
+    expect(window.localStorage.getItem('jt-design:locale')).toBe('de');
     expect(document.documentElement.getAttribute('lang')).toBe('de');
     expect(document.documentElement.getAttribute('dir')).toBe('ltr');
   });

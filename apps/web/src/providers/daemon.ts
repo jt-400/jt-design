@@ -21,7 +21,7 @@ import type {
   DaemonAgentPayload,
   ResearchOptions,
   SseErrorPayload,
-} from '@open-design/contracts';
+} from '@jt-design/contracts';
 import type { StreamHandlers } from './anthropic';
 
 /**

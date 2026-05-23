@@ -6,7 +6,7 @@ import type {
   ConnectorDetailResponse,
   ConnectorListResponse,
   ConnectorStatusResponse,
-} from '@open-design/contracts';
+} from '@jt-design/contracts';
 import type {
   AgentInfo,
   AppVersionInfo,
@@ -309,7 +309,7 @@ export interface ConnectorActionResult {
 }
 
 function popupBlockedMessage(): string {
-  return 'Popup blocked. Allow popups for Open Design and try again.';
+  return 'Popup blocked. Allow popups for JT Design and try again.';
 }
 
 async function decodeConnectorError(resp: Response): Promise<string> {

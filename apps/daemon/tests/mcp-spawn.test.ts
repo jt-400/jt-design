@@ -114,7 +114,7 @@ describe('spawn writes external MCP config for Claude Code', () => {
     // Use the same path the daemon's `ensureProject` uses.
     const projectsBase = process.env.OD_DATA_DIR
       ? join(process.env.OD_DATA_DIR, 'projects')
-      : join(process.cwd(), '.od', 'projects');
+      : join(process.cwd(), '.jtd', 'projects');
     return { id, dir: join(projectsBase, id) };
   }
 

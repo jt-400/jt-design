@@ -1,10 +1,10 @@
 {
-  "name": "open-design",
+  "name": "jt-design",
   "version": "0.6.0",
   "private": true,
   "packageManager": "pnpm@10.33.2",
   "type": "module",
-  "description": "Local-first design product: detects your installed code-agent CLI, runs design skills + design systems, streams artifacts into a sandboxed preview.",
+  "description": "JT Design u2014 AI-powered local-first design studio. Create stunning prototypes, decks, and design systems. tuatahi.art",
   "license": "Apache-2.0",
   "bin": {
     "od": "./apps/daemon/dist/cli.js"
@@ -21,8 +21,8 @@
     "typecheck": "pnpm -r --workspace-concurrency=1 --if-present run typecheck && tsc -p scripts/tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@open-design/tools-dev": "workspace:*",
-    "@open-design/tools-pack": "workspace:*",
+    "@jt-design/tools-dev": "workspace:*",
+    "@jt-design/tools-pack": "workspace:*",
     "@types/node": "^20.17.10",
     "tsx": "4.21.0",
     "typescript": "^5.6.3"

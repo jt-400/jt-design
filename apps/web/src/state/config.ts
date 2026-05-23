@@ -1,4 +1,4 @@
-import type { AppConfigPrefs } from '@open-design/contracts';
+import type { AppConfigPrefs } from '@jt-design/contracts';
 import { MEDIA_PROVIDERS } from '../media/models';
 import { isOpenAICompatible } from '../providers/openai-compatible';
 import type {
@@ -15,7 +15,7 @@ import {
   DEFAULT_SUCCESS_SOUND_ID,
 } from '../utils/notifications';
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'jt-design:config';
 const CONFIG_MIGRATION_VERSION = 1;
 
 // Hatched out of the box, but tucked away — the user has to go through

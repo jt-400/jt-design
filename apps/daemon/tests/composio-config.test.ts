@@ -173,7 +173,7 @@ describe('composio config', () => {
   });
 
   it('does not hydrate persisted catalog cache before the runtime data directory is configured', async () => {
-    const defaultCacheDir = path.join(process.cwd(), '.od', 'connectors');
+    const defaultCacheDir = path.join(process.cwd(), '.jtd', 'connectors');
     const defaultCachePath = path.join(defaultCacheDir, 'composio-catalog-cache.json');
     const dir = await useTempComposioStore();
     await mkdir(defaultCacheDir, { recursive: true });

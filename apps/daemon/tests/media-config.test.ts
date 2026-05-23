@@ -76,7 +76,7 @@ describe('media-config OpenAI OAuth fallback', () => {
   }
 
   async function writeStoredMediaConfig(data: unknown) {
-    const file = path.join(projectRoot, '.od', 'media-config.json');
+    const file = path.join(projectRoot, '.jtd', 'media-config.json');
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, JSON.stringify(data), 'utf8');
   }

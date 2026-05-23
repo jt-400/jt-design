@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ConnectorDetail, ConnectorStatusResponse } from '@open-design/contracts';
+import type { ConnectorDetail, ConnectorStatusResponse } from '@jt-design/contracts';
 import { useT } from '../i18n';
 import {
   DEFAULT_AUDIO_MODEL,
@@ -72,7 +72,7 @@ const SIDEBAR_MIN = 320;
 const SIDEBAR_MAX = 560;
 const SIDEBAR_DEFAULT = 380;
 const SIDEBAR_STORAGE_KEY = 'od-entry-sidebar-width';
-const CONNECTOR_CALLBACK_MESSAGE_TYPE = 'open-design:connector-connected';
+const CONNECTOR_CALLBACK_MESSAGE_TYPE = 'jt-design:connector-connected';
 
 export function isTrustedConnectorCallbackOrigin(origin: string, currentOrigin?: string): boolean {
   const expectedOrigin = currentOrigin ?? (typeof window === 'undefined' ? '' : window.location.origin);
@@ -90,7 +90,7 @@ export function isTrustedConnectorCallbackOrigin(origin: string, currentOrigin?:
 // layout. They re-summon it from the entry-view avatar dropdown — the
 // PetRail's own collapse toggle only narrows the column, so this state
 // is the "the rail isn't there at all" escape hatch.
-const PET_RAIL_HIDDEN_KEY = 'open-design:pet-rail-hidden';
+const PET_RAIL_HIDDEN_KEY = 'jt-design:pet-rail-hidden';
 
 function loadSidebarWidth(): number {
   try {

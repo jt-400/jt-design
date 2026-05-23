@@ -39,13 +39,13 @@ export const hu: Dict = {
   'common.daysShort': '{n}n',
   'common.untitled': 'Cím nélkül',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'JT Design',
   'app.brandPill': 'Kutatási előzetes',
   'app.brandSubtitle': 'a Nexu Labs-tól',
   'app.welcomeLoading': 'Munkaterület betöltése…',
 
   'settings.welcomeKicker': 'Üdvözlünk',
-  'settings.welcomeTitle': 'Open Design beállítása',
+  'settings.welcomeTitle': 'JT Design beállítása',
   'settings.welcomeSubtitle':
     'Válaszd ki, hogyan szeretnéd futtatni a generálásokat. Ezt bármikor módosíthatod a felső sáv Beállítások gombjával.',
   'settings.kicker': 'Beállítások',
@@ -88,10 +88,10 @@ export const hu: Dict = {
   'settings.agentInstall.install': 'Telepítés',
   'settings.agentInstall.docs': 'Dokumentáció',
   'settings.agentInstall.pathHint':
-    'Ha npm-mel vagy Homebrew-val telepítettél egy CLI-t, de továbbra is nincs telepítve állapotban látszik, ellenőrizd, hogy az eszköz bin könyvtára benne van-e abban a PATH-ban, amit az Open Design daemon örököl (macOS-en a Terminal és a GUI appok PATH-ja eltérhet). Lásd a QUICKSTART.md "Local agent CLI and PATH" szakaszát.',
+    'Ha npm-mel vagy Homebrew-val telepítettél egy CLI-t, de továbbra is nincs telepítve állapotban látszik, ellenőrizd, hogy az eszköz bin könyvtára benne van-e abban a PATH-ban, amit az JT Design daemon örököl (macOS-en a Terminal és a GUI appok PATH-ja eltérhet). Lásd a QUICKSTART.md "Local agent CLI and PATH" szakaszát.',
   'settings.agentInstall.stepOpenLinks': 'Nyisd meg a Telepítés vagy Dokumentáció hivatkozást a kívánt ügynöknél.',
   'settings.agentInstall.stepAuth':
-    'Hitelesíts a szolgáltató CLI-jében (bejelentkezés vagy API hitelesítő adatok megadása), mielőtt visszatérsz az Open Designhoz.',
+    'Hitelesíts a szolgáltató CLI-jében (bejelentkezés vagy API hitelesítő adatok megadása), mielőtt visszatérsz az JT Designhoz.',
   'settings.agentInstall.stepRescan': 'Kattints az Újraellenőrzés gombra ebben a szakaszban.',
   'settings.agentInstall.stepSelect': 'Válaszd ki az ügynök kártyáját, amint telepítettként jelenik meg.',
   'settings.noAgentsDetected':
@@ -147,7 +147,7 @@ export const hu: Dict = {
   'settings.mediaProvidersHint':
     'API-kulcsok kép-, videó- és hanggeneráláshoz. Helyben tárolva, és a helyi daemonnal szinkronizálva.',
   'settings.mcpServerTitle': 'MCP-szerver',
-  'settings.mcpServerHint': 'Tedd elérhetővé az Open Designt MCP-szerverként a kódügynököd számára.',
+  'settings.mcpServerHint': 'Tedd elérhetővé az JT Designt MCP-szerverként a kódügynököd számára.',
   'settings.externalMcpTitle': 'Külső MCP',
   'settings.externalMcpHint': 'Adj hozzá MCP-eszközöket külső szolgáltatásokból (Higgsfield, GitHub, …).',
   'settings.mediaProviderApiKey': 'API-kulcs',
@@ -163,9 +163,9 @@ export const hu: Dict = {
   'settings.mediaProviderReloadSuccess': 'A médiaszolgáltatók beállításai újra lettek töltve a helyi démonból.',
   'settings.mediaProviderLoadError': 'Nem sikerült betölteni a médiaszolgáltatók beállításait a helyi démonból. Egyelőre a böngészőben mentett beállításokat használjuk.',
   'settings.privacy': 'Privacy',
-  'settings.privacyHint': 'What data is shared with the Open Design team',
-  'settings.privacyConsentKicker': 'Help us improve Open Design',
-  'settings.privacyConsentLead': 'Open Design can share usage data with our team to help us improve. This includes:',
+  'settings.privacyHint': 'What data is shared with the JT Design team',
+  'settings.privacyConsentKicker': 'Help us improve JT Design',
+  'settings.privacyConsentLead': 'JT Design can share usage data with our team to help us improve. This includes:',
   'settings.privacyConsentFooter': 'You can change either of these any time in Settings → Privacy. We never upload the contents of your generated artifact files.',
   'settings.privacyConsentShare': 'Help improve',
   'settings.privacyConsentDecline': 'Not now',
@@ -604,7 +604,7 @@ export const hu: Dict = {
   'preview.closeTitle': 'Bezárás (Esc)',
   'preview.loading': '{label} betöltése…',
   'preview.errorTitle': 'A példa betöltése nem sikerült.',
-  'preview.errorBody': 'A példa HTML-jének letöltése meghiúsult. Győződj meg róla, hogy az Open Design fut, majd próbáld újra.',
+  'preview.errorBody': 'A példa HTML-jének letöltése meghiúsult. Győződj meg róla, hogy az JT Design fut, majd próbáld újra.',
   'preview.retry': 'Újra',
   'preview.unavailableTitle': 'Ehhez a skillhez nincs mellékelt előnézet.',
   'preview.unavailableBody': 'Ez a skill {kind} kimenetet készít — futtasd a promptot a csevegésben egy létrehozásához.',
@@ -981,7 +981,7 @@ export const hu: Dict = {
   'pet.navTitle': 'Háziállatok',
   'pet.navHint': 'Befogadás vagy testreszabás',
   'pet.tabBuiltIn': 'Beépített',
-  'pet.tabBuiltInHint': 'Az Open Designnal csomagolt társak — válassz egyet és fogadd örökbe.',
+  'pet.tabBuiltInHint': 'Az JT Designnal csomagolt társak — válassz egyet és fogadd örökbe.',
   'pet.builtInEmpty': 'A beépített állatok most nem elérhetők. Frissítsd a Közösség fület, amint a daemon újra online.',
   'pet.tabCustom': 'Egyéni',
   'pet.tabCustomHint': 'Készíts sajátot névvel, jellel, színnel vagy sprite-tal.',
@@ -1095,7 +1095,7 @@ export const hu: Dict = {
   'pet.communitySyncDone': '{wrote} új háziállat szinkronizálva (összesen {total}).',
   'pet.communitySyncFailed': 'A szinkronizálás sikertelen: {error}',
   'pet.codexBundled': 'Beépített',
-  'pet.codexBundledTitle': 'Az Open Designgal érkezik — letöltés nem szükséges.',
+  'pet.codexBundledTitle': 'Az JT Designgal érkezik — letöltés nem szükséges.',
 
   'settings.notifications': 'Értesítések',
   'settings.notificationsHint': 'Hang és asztali értesítés a feladat befejezésekor',

@@ -39,13 +39,13 @@ export const zhTW: Dict = {
   'common.daysShort': '{n}天',
   'common.untitled': '未命名',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'JT Design',
   'app.brandPill': '研究預覽版',
   'app.brandSubtitle': '由 Nexu Labs 出品',
   'app.welcomeLoading': '正在載入工作區…',
 
   'settings.welcomeKicker': '歡迎',
-  'settings.welcomeTitle': '初始化 Open Design',
+  'settings.welcomeTitle': '初始化 JT Design',
   'settings.welcomeSubtitle':
     '選擇你希望使用的執行方式。後續可以隨時從頂端「設定」按鈕中修改。',
   'settings.kicker': '設定',
@@ -87,10 +87,10 @@ export const zhTW: Dict = {
   'settings.agentInstall.install': '安裝',
   'settings.agentInstall.docs': '文件',
   'settings.agentInstall.pathHint':
-    '如果你透過 npm 或 Homebrew 安裝了 CLI，但仍顯示為未安裝，請確認該工具的 bin 目錄已加入 Open Design daemon 繼承的 PATH（在 macOS 上，Terminal 與 GUI 應用的 PATH 可能不同）。請參閱 QUICKSTART.md（「Local agent CLI and PATH」章節）。',
+    '如果你透過 npm 或 Homebrew 安裝了 CLI，但仍顯示為未安裝，請確認該工具的 bin 目錄已加入 JT Design daemon 繼承的 PATH（在 macOS 上，Terminal 與 GUI 應用的 PATH 可能不同）。請參閱 QUICKSTART.md（「Local agent CLI and PATH」章節）。',
   'settings.agentInstall.stepOpenLinks': '在目標代理卡片上開啟「安裝」或「文件」連結。',
   'settings.agentInstall.stepAuth':
-    '返回 Open Design 前，請先在對應 CLI 完成驗證（登入或新增 API 憑證）。',
+    '返回 JT Design 前，請先在對應 CLI 完成驗證（登入或新增 API 憑證）。',
   'settings.agentInstall.stepRescan': '在此區域點擊「重新掃描」。',
   'settings.agentInstall.stepSelect': '當代理顯示為已安裝後，選擇該代理卡片。',
   'settings.noAgentsDetected':
@@ -145,7 +145,7 @@ export const zhTW: Dict = {
   'settings.mediaProviders': '媒體生成提供商',
   'settings.mediaProvidersHint': '圖片、影片、音訊生成的 API key。存於本機並同步到本地守護程序。',
   'settings.mcpServerTitle': 'MCP 伺服器',
-  'settings.mcpServerHint': '將 Open Design 作為 MCP 伺服器暴露給你的編碼代理。',
+  'settings.mcpServerHint': '將 JT Design 作為 MCP 伺服器暴露給你的編碼代理。',
   'settings.externalMcpTitle': '外部 MCP',
   'settings.externalMcpHint': '接入外部服務的 MCP 工具（Higgsfield、GitHub 等）。',
   'settings.mediaProviderApiKey': 'API key',
@@ -161,9 +161,9 @@ export const zhTW: Dict = {
   'settings.mediaProviderReloadSuccess': '已從本機守護程序重新載入媒體供應商設定。',
   'settings.mediaProviderLoadError': '無法從本機守護程序載入媒體供應商設定。目前將使用瀏覽器中儲存的設定。',
   'settings.privacy': '隱私',
-  'settings.privacyHint': '與 Open Design 團隊共享哪些資料',
-  'settings.privacyConsentKicker': '協助我們改進 Open Design',
-  'settings.privacyConsentLead': 'Open Design 可以將使用資料分享給我們的團隊以協助改進。包含:',
+  'settings.privacyHint': '與 JT Design 團隊共享哪些資料',
+  'settings.privacyConsentKicker': '協助我們改進 JT Design',
+  'settings.privacyConsentLead': 'JT Design 可以將使用資料分享給我們的團隊以協助改進。包含:',
   'settings.privacyConsentFooter': '你可以隨時在 設定 → 隱私 中變更任一項。我們絕不上傳你產生的產出檔案內容。',
   'settings.privacyConsentShare': '協助改進',
   'settings.privacyConsentDecline': '暫不',
@@ -191,13 +191,13 @@ export const zhTW: Dict = {
   // MCP server settings
   'settings.mcpTitle': 'MCP server',
   'settings.mcpHint':
-    '讓其他專案中的程式碼代理（Claude Code、Cursor、VS Code、Antigravity、Zed、Windsurf）讀取您的 Open Design 專案。您可以直接將設計匯入應用程式，無需先匯出 zip。',
+    '讓其他專案中的程式碼代理（Claude Code、Cursor、VS Code、Antigravity、Zed、Windsurf）讀取您的 JT Design 專案。您可以直接將設計匯入應用程式，無需先匯出 zip。',
   'settings.mcpDaemonError':
-    '無法連線到本地守護程序以解析安裝路徑（{error}）。請確認 Open Design 正在執行，然後重新開啟此面板。',
+    '無法連線到本地守護程序以解析安裝路徑（{error}）。請確認 JT Design 正在執行，然後重新開啟此面板。',
   'settings.mcpBuildDaemon': '請先建置守護行程。',
   'settings.mcpNodeMissing': '缺少 Node 執行檔。',
   'settings.mcpBuildHint':
-    '缺少 apps/daemon/dist/cli.js。請執行 `pnpm --filter @open-design/daemon build` 後重新整理。',
+    '缺少 apps/daemon/dist/cli.js。請執行 `pnpm --filter @jt-design/daemon build` 後重新整理。',
   'settings.mcpMethodCli': 'CLI 指令',
   'settings.mcpInstructionCli': '在您的終端機中執行此指令。',
   'settings.mcpMethodToml': 'TOML 設定檔',
@@ -231,9 +231,9 @@ export const zhTW: Dict = {
   'settings.mcpCapabilityPull':
     '透過單一呼叫拉取設計套件：包含進入點檔案以及所有引用的 CSS 變數、元件與字型。',
   'settings.mcpCapabilityDefault':
-    '預設使用您在 Open Design 中開啟的專案與檔案，因此您可以說「在我的應用程式中建置這個」，無需重新說明是哪個設計。',
+    '預設使用您在 JT Design 中開啟的專案與檔案，因此您可以說「在我的應用程式中建置這個」，無需重新說明是哪個設計。',
   'settings.mcpRunningNote':
-    'Open Design 必須正在執行，MCP 工具呼叫才能成功。如果您在開啟 Open Design 之前就已啟動 coding agent，請重新啟動 agent，使其能夠連線到正在執行的守護行程。',
+    'JT Design 必須正在執行，MCP 工具呼叫才能成功。如果您在開啟 JT Design 之前就已啟動 coding agent，請重新啟動 agent，使其能夠連線到正在執行的守護行程。',
 
   'entry.tabDesigns': '我的設計',
   'entry.tabExamples': '範例',
@@ -655,7 +655,7 @@ export const zhTW: Dict = {
   'preview.closeTitle': '關閉（Esc）',
   'preview.loading': '正在載入{label}…',
   'preview.errorTitle': '無法載入此範例。',
-  'preview.errorBody': '範例 HTML 載入失敗。請確認 Open Design 正在執行後重試。',
+  'preview.errorBody': '範例 HTML 載入失敗。請確認 JT Design 正在執行後重試。',
   'preview.retry': '重試',
   'preview.unavailableTitle': '此技能尚未附帶預覽範例。',
   'preview.unavailableBody': '此技能用於產生 {kind} 產物 — 請在對話中執行此 Prompt 來產生。',
@@ -1042,7 +1042,7 @@ export const zhTW: Dict = {
 
   'pet.title': '寵物',
   'pet.tabBuiltIn': '內建',
-  'pet.tabBuiltInHint': 'Open Design 內建的精選寵物 — 一鍵領養。',
+  'pet.tabBuiltInHint': 'JT Design 內建的精選寵物 — 一鍵領養。',
   'pet.builtInEmpty': '目前無法載入內建寵物。等本地服務恢復後,重新整理「社群」頁籤再試。',
   'pet.tabCustom': '自訂',
   'pet.tabCustomHint': '自己命名、選符號或上傳精靈圖。',
@@ -1149,7 +1149,7 @@ export const zhTW: Dict = {
   'pet.communitySyncDone': '已同步 {wrote} 個新寵物（共 {total} 個）。',
   'pet.communitySyncFailed': '同步失敗：{error}',
   'pet.codexBundled': '內建',
-  'pet.codexBundledTitle': 'Open Design 內建寵物，無需下載。',
+  'pet.codexBundledTitle': 'JT Design 內建寵物，無需下載。',
 
   'settings.notifications': '通知',
   'settings.notificationsHint': '任務完成時的音效和桌面通知',

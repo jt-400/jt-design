@@ -12,7 +12,7 @@ Follow the root `AGENTS.md` and `tools/AGENTS.md` first. This tool owns the repo
 - Linux AppImage build/install/start/stop/logs/uninstall/cleanup smoke commands.
 - Linux headless (no-Electron) install/start/stop via `--headless` flag on `install`, `start`, and `stop`.
 - Linux containerized builds via `electronuserland/builder` Docker image for distro-agnostic glibc compat.
-- Consuming sidecar/process/path primitives from `@open-design/sidecar-proto`, `@open-design/sidecar`, and `@open-design/platform`.
+- Consuming sidecar/process/path primitives from `@jt-design/sidecar-proto`, `@jt-design/sidecar`, and `@jt-design/platform`.
 
 ## Does not own
 

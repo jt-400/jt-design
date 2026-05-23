@@ -1,5 +1,5 @@
 {
-  "name": "@open-design/desktop",
+  "name": "@jt-design/desktop",
   "version": "0.6.0",
   "private": true,
   "type": "module",
@@ -18,9 +18,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@open-design/platform": "workspace:*",
-    "@open-design/sidecar": "workspace:*",
-    "@open-design/sidecar-proto": "workspace:*"
+    "@jt-design/platform": "workspace:*",
+    "@jt-design/sidecar": "workspace:*",
+    "@jt-design/sidecar-proto": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "24.12.2",

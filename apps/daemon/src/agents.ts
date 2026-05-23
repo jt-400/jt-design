@@ -8,7 +8,7 @@ import { homedir } from 'node:os';
 import {
   createCommandInvocation,
   wellKnownUserToolchainBins,
-} from '@open-design/platform';
+} from '@jt-design/platform';
 import { detectAcpModels } from './acp.js';
 import { parsePiModels } from './pi-rpc.js';
 
@@ -134,7 +134,7 @@ const AGENT_INSTALL_LINKS: Record<
     docsUrl: 'https://github.com/sst/opencode',
   },
   hermes: {
-    installUrl: 'https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md',
+    installUrl: 'https://github.com/tuatahi.art/blob/main/docs/agent-adapters.md',
     docsUrl: 'https://hermes-agent.nousresearch.com/docs/',
   },
   kimi: {
@@ -158,7 +158,7 @@ const AGENT_INSTALL_LINKS: Record<
     docsUrl: 'https://docs.github.com/en/copilot/how-tos/use-copilot-extensions/use-in-cli',
   },
   pi: {
-    installUrl: 'https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md',
+    installUrl: 'https://github.com/tuatahi.art/blob/main/docs/agent-adapters.md',
     docsUrl: 'https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md',
   },
   kiro: {
@@ -972,9 +972,9 @@ export const AGENT_DEFS = [
   },
 ];
 
-// Toolchain dir computation lives in @open-design/platform so the daemon
+// Toolchain dir computation lives in @jt-design/platform so the daemon
 // resolver and the packaged sidecar PATH builder can never drift again
-// (issue #442). See @open-design/platform's wellKnownUserToolchainBins
+// (issue #442). See @jt-design/platform's wellKnownUserToolchainBins
 // for the canonical search list. The wrapper here just preserves the
 // OD_AGENT_HOME test hook and the per-home cache that reduces
 // filesystem scans on every resolveOnPath() call.

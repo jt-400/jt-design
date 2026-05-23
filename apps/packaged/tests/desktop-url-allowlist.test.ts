@@ -1,12 +1,12 @@
 /**
  * Regression coverage for the URL-policy helpers re-exported from
- * `@open-design/desktop/main`. The helpers are part of the security
+ * `@jt-design/desktop/main`. The helpers are part of the security
  * boundary for child-window navigation (see `setWindowOpenHandler`
  * in `apps/desktop/src/main/runtime.ts`); the packaged workspace
  * hosts the test because `apps/desktop` itself has no vitest setup
  * yet — adding one is more scope than #911 needs.
  *
- * @see https://github.com/nexu-io/open-design/issues/911
+ * @see https://github.com/tuatahi.art/issues/911
  */
 
 // Mock electron at import time — `runtime.ts` pulls `BrowserWindow`,
@@ -30,7 +30,7 @@ import {
   isAllowedChildWindowUrl,
   isHttpUrl,
   resolveDesktopStatusUrl,
-} from '@open-design/desktop/main';
+} from '@jt-design/desktop/main';
 
 describe('isHttpUrl', () => {
   it('matches http and https protocols', () => {

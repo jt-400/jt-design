@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FileViewer } from '../../src/components/FileViewer';
 import type { ProjectFile } from '../../src/types';
 
-// Regression coverage for nexu-io/open-design#890. When the agent emits
+// Regression coverage for tuatahi.art#890. When the agent emits
 // an HTML artifact with no `data-od-id` / `data-screen-label`
 // annotations (a freeform PRD → HTML pass without going through a
 // skill, for example), the existing inspect-empty-hint banner lied:

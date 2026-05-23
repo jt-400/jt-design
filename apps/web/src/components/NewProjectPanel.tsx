@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ConnectorDetail } from '@open-design/contracts';
+import type { ConnectorDetail } from '@jt-design/contracts';
 
 declare global {
   interface Window {

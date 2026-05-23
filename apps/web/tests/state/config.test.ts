@@ -576,7 +576,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(legacyConfig));
+    store.set('jt-design:config', JSON.stringify(legacyConfig));
 
     const config = loadConfig();
 
@@ -597,7 +597,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(legacyConfig));
+    store.set('jt-design:config', JSON.stringify(legacyConfig));
 
     const config = loadConfig();
 
@@ -614,7 +614,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(daemonConfig));
+    store.set('jt-design:config', JSON.stringify(daemonConfig));
 
     const config = loadConfig();
 
@@ -633,7 +633,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(legacyConfig));
+    store.set('jt-design:config', JSON.stringify(legacyConfig));
 
     const config = loadConfig();
 
@@ -655,7 +655,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(legacyConfig));
+    store.set('jt-design:config', JSON.stringify(legacyConfig));
 
     const config = loadConfig();
 
@@ -674,7 +674,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(legacyConfig));
+    store.set('jt-design:config', JSON.stringify(legacyConfig));
 
     const config = loadConfig();
 
@@ -693,7 +693,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(explicitConfig));
+    store.set('jt-design:config', JSON.stringify(explicitConfig));
 
     const config = loadConfig();
 
@@ -710,7 +710,7 @@ describe('loadConfig', () => {
       skillId: null,
       designSystemId: null,
     };
-    store.set('open-design:config', JSON.stringify(legacyConfig));
+    store.set('jt-design:config', JSON.stringify(legacyConfig));
 
     const config = loadConfig();
 
@@ -726,7 +726,7 @@ describe('loadConfig', () => {
       theme: 'dark',
       accentColor: '#4F46E5',
     };
-    store.set('open-design:config', JSON.stringify(savedConfig));
+    store.set('jt-design:config', JSON.stringify(savedConfig));
 
     const config = loadConfig();
 
@@ -738,7 +738,7 @@ describe('loadConfig', () => {
     const savedConfig: Partial<AppConfig> = {
       accentColor: 'blue',
     };
-    store.set('open-design:config', JSON.stringify(savedConfig));
+    store.set('jt-design:config', JSON.stringify(savedConfig));
 
     expect(loadConfig().accentColor).toBe(DEFAULT_CONFIG.accentColor);
   });
@@ -751,13 +751,13 @@ describe('loadConfig', () => {
         templateSkillId: 'orbit-general',
       },
     };
-    store.set('open-design:config', JSON.stringify(savedConfig));
+    store.set('jt-design:config', JSON.stringify(savedConfig));
 
     expect(loadConfig().orbit?.time).toBe(DEFAULT_CONFIG.orbit?.time);
   });
 
   it('returns defaults for malformed localStorage JSON', () => {
-    store.set('open-design:config', '{broken-json');
+    store.set('jt-design:config', '{broken-json');
 
     expect(loadConfig()).toEqual(DEFAULT_CONFIG);
   });
@@ -777,7 +777,7 @@ describe('saveConfig', () => {
       telemetry: { metrics: true },
     });
 
-    const saved = JSON.parse(store.get('open-design:config') ?? '{}');
+    const saved = JSON.parse(store.get('jt-design:config') ?? '{}');
     expect(saved.installationId).toBeUndefined();
     expect(saved.privacyDecisionAt).toBeUndefined();
     expect(saved.telemetry).toBeUndefined();

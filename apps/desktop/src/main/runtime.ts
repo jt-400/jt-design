@@ -3,7 +3,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
-import type { DesktopExportPdfInput, DesktopExportPdfResult } from "@open-design/sidecar-proto";
+import type { DesktopExportPdfInput, DesktopExportPdfResult } from "@jt-design/sidecar-proto";
 
 import { exportPdfFromHtml } from "./pdf-export.js";
 

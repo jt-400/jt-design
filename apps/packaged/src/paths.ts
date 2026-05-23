@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { APP_KEYS } from "@open-design/sidecar-proto";
+import { APP_KEYS } from "@jt-design/sidecar-proto";
 
 import type { PackagedConfig } from "./config.js";
 

@@ -5,7 +5,7 @@
 // These helpers fail soft (returning null / [] on transport errors) so
 // the UI can stay rendered when the daemon is briefly unreachable.
 
-import type { ImportFolderRequest, ImportFolderResponse } from '@open-design/contracts';
+import type { ImportFolderRequest, ImportFolderResponse } from '@jt-design/contracts';
 import { randomUUID } from '../utils/uuid';
 import type {
   ChatMessage,
@@ -47,7 +47,7 @@ export async function createProject(input: {
 }): Promise<{ project: Project; conversationId: string } | null> {
   try {
     // `randomUUID` falls back to `crypto.getRandomValues` / `Math.random`
-    // when `crypto.randomUUID` is unavailable. Open Design served over
+    // when `crypto.randomUUID` is unavailable. JT Design served over
     // plain HTTP on a LAN IP (Docker / unRAID self-hosting) is a
     // non-secure context, where `crypto.randomUUID` is undefined and
     // calling it directly throws — the surrounding try/catch then turns

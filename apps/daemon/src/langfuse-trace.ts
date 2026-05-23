@@ -93,7 +93,7 @@ export interface RuntimeInfo {
   osRelease?: string;
   /** CPU architecture (`os.arch()`, e.g. 'arm64' | 'x64'). */
   arch?: string;
-  /** Open Design app version reported by the daemon. */
+  /** JT Design app version reported by the daemon. */
   appVersion?: string;
   /** Build channel (development / nightly / beta / stable). */
   appChannel?: string;

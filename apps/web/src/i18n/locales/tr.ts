@@ -39,13 +39,13 @@ export const tr: Dict = {
   'common.daysShort': '{n}g',
   'common.untitled': 'Başlıksız',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'JT Design',
   'app.brandPill': 'Önizleme Araştırması',
   'app.brandSubtitle': 'Nexu Labs tarafından',
   'app.welcomeLoading': 'Çalışma alanı yükleniyor…',
 
   'settings.welcomeKicker': 'Hoşgeldiniz',
-  'settings.welcomeTitle': 'Open Design kurulumu',
+  'settings.welcomeTitle': 'JT Design kurulumu',
   'settings.welcomeSubtitle':
     "Oluşturmaları nasıl çalıştıracağınızı seçin. Bunu her zaman üst çubuktaki Ayarlar sekmesinden değiştirebilirsiniz.",
   'settings.kicker': 'Ayarlar',
@@ -88,10 +88,10 @@ export const tr: Dict = {
   'settings.agentInstall.install': 'Yükle',
   'settings.agentInstall.docs': 'Dokümanlar',
   'settings.agentInstall.pathHint':
-    'Bir CLI\'yi npm veya Homebrew ile kurduysan ancak hâlâ kurulu değil olarak görünüyorsa, aracın bin dizininin Open Design daemon\'unun devraldığı PATH içinde olduğundan emin ol (macOS\'te Terminal ve GUI uygulamalarının PATH\'i farklı olabilir). QUICKSTART.md içindeki "Local agent CLI and PATH" bölümüne bak.',
+    'Bir CLI\'yi npm veya Homebrew ile kurduysan ancak hâlâ kurulu değil olarak görünüyorsa, aracın bin dizininin JT Design daemon\'unun devraldığı PATH içinde olduğundan emin ol (macOS\'te Terminal ve GUI uygulamalarının PATH\'i farklı olabilir). QUICKSTART.md içindeki "Local agent CLI and PATH" bölümüne bak.',
   'settings.agentInstall.stepOpenLinks': 'Tercih ettiğin ajan için Yükle veya Dokümanlar bağlantısını aç.',
   'settings.agentInstall.stepAuth':
-    'Open Design\'a dönmeden önce sağlayıcı CLI\'sinde kimlik doğrulaması yap (oturum aç veya API kimlik bilgileri ekle).',
+    'JT Design\'a dönmeden önce sağlayıcı CLI\'sinde kimlik doğrulaması yap (oturum aç veya API kimlik bilgileri ekle).',
   'settings.agentInstall.stepRescan': 'Bu bölümde Yeniden tara\'ya tıkla.',
   'settings.agentInstall.stepSelect': 'Ajan yüklü olarak göründüğünde kartını seç.',
   'settings.noAgentsDetected':
@@ -141,7 +141,7 @@ export const tr: Dict = {
   'settings.mediaProvidersHint':
     'Görsel, video ve ses oluşumu için API anahtarları. Yerel saklanır ve yerel arka plan servisiyle senkronize edilir.',
   'settings.mcpServerTitle': 'MCP sunucusu',
-  'settings.mcpServerHint': 'Open Design\'ı kodlama ajanınız için MCP sunucusu olarak yayınlayın.',
+  'settings.mcpServerHint': 'JT Design\'ı kodlama ajanınız için MCP sunucusu olarak yayınlayın.',
   'settings.externalMcpTitle': 'Dış MCP',
   'settings.externalMcpHint': 'Dış servislerden (Higgsfield, GitHub, …) MCP araçları ekleyin.',
   'settings.mediaProviderApiKey': 'API anahtarı',
@@ -157,9 +157,9 @@ export const tr: Dict = {
   'settings.mediaProviderReloadSuccess': 'Medya sağlayıcı ayarları yerel daemon’dan yeniden yüklendi.',
   'settings.mediaProviderLoadError': 'Medya sağlayıcı ayarları yerel daemon’dan yüklenemedi. Şimdilik tarayıcıya kaydedilen ayarlar kullanılıyor.',
   'settings.privacy': 'Privacy',
-  'settings.privacyHint': 'What data is shared with the Open Design team',
-  'settings.privacyConsentKicker': 'Help us improve Open Design',
-  'settings.privacyConsentLead': 'Open Design can share usage data with our team to help us improve. This includes:',
+  'settings.privacyHint': 'What data is shared with the JT Design team',
+  'settings.privacyConsentKicker': 'Help us improve JT Design',
+  'settings.privacyConsentLead': 'JT Design can share usage data with our team to help us improve. This includes:',
   'settings.privacyConsentFooter': 'You can change either of these any time in Settings → Privacy. We never upload the contents of your generated artifact files.',
   'settings.privacyConsentShare': 'Help improve',
   'settings.privacyConsentDecline': 'Not now',
@@ -597,7 +597,7 @@ export const tr: Dict = {
   'preview.closeTitle': 'Kapat (Esc)',
   'preview.loading': '{label} yükleniyor…',
   'preview.errorTitle': 'Bu örnek yüklenemedi.',
-  'preview.errorBody': 'Örnek HTML\'i alınamadı. Open Design\'ın çalıştığından emin olup tekrar deneyin.',
+  'preview.errorBody': 'Örnek HTML\'i alınamadı. JT Design\'ın çalıştığından emin olup tekrar deneyin.',
   'preview.retry': 'Tekrar dene',
   'preview.unavailableTitle': 'Bu yetenek için birlikte gelen bir önizleme yok.',
   'preview.unavailableBody': 'Bu yetenek {kind} çıktısı üretir — bir tane oluşturmak için sohbette istemini çalıştırın.',
@@ -969,7 +969,7 @@ export const tr: Dict = {
 
   'pet.title': 'Evcil Dostlar',
   'pet.tabBuiltIn': 'Yerleşik',
-  'pet.tabBuiltInHint': 'Open Design ile gelen seçili dostlar — birini seç ve sahiplen.',
+  'pet.tabBuiltInHint': 'JT Design ile gelen seçili dostlar — birini seç ve sahiplen.',
   'pet.builtInEmpty': 'Hazır petler şu an kullanılamıyor. Daemon tekrar çevrimiçi olduğunda Topluluk sekmesini yenile.',
   'pet.tabCustom': 'Özel',
   'pet.tabCustomHint': 'Ad, glif, renk veya sprite\'ını kendin belirle.',
@@ -1076,7 +1076,7 @@ export const tr: Dict = {
   'pet.communitySyncDone': '{wrote} yeni pet eşitlendi (toplam {total}).',
   'pet.communitySyncFailed': 'Eşitleme başarısız: {error}',
   'pet.codexBundled': 'Yerleşik',
-  'pet.codexBundledTitle': 'Open Design ile birlikte gelir — indirme gerekmez.',
+  'pet.codexBundledTitle': 'JT Design ile birlikte gelir — indirme gerekmez.',
 
   'settings.notifications': 'Bildirimler',
   'settings.notificationsHint': 'Görev tamamlandığında ses ve masaüstü bildirimi',
