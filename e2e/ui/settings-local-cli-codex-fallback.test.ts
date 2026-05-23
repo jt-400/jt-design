@@ -76,7 +76,7 @@ async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForLoadingToClear(page);
   const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
-  if (await privacyDialog.isVisible().catch(() => false)) {
+  if (await privacyDialog.isVisible()) {
     await privacyDialog.getByRole('button', { name: /not now/i }).click();
   }
   await expect(page.getByRole('button', { name: OPEN_SETTINGS_LABEL })).toBeVisible();
@@ -155,6 +155,11 @@ async function openLocalCliSettings(
 
   await gotoEntryHome(page);
   await page.getByRole('button', { name: OPEN_SETTINGS_LABEL }).click();
+  const menu = page.getByRole('menu');
+  if (await menu.isVisible().catch(() => false)) {
+    await menu.getByRole('button', { name: SETTINGS_MENU_LABEL }).click();
+  }
+
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await dialog.getByRole('tab', { name: LOCAL_CLI_LABEL }).click();

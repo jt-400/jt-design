@@ -21,6 +21,7 @@ import {
 } from '../providers/registry';
 import {
   createConversation,
+  getProject,
   listConversations,
   listMessages,
   loadTabs,
@@ -93,6 +94,7 @@ import type {
   TrackingDesignSystemStatusValue,
   TrackingDesignSystemsEntryFrom,
 } from '@open-design/contracts/analytics';
+import { useI18n } from '../i18n';
 
 // Source counts the embedded DS creation flow can report back to its
 // wrapper at Generate-click time. OnboardingView uses this to emit the
@@ -148,6 +150,11 @@ interface DetailProps {
 
 type SetupStep = 'setup' | 'confirm';
 type ReviewTab = 'system' | 'files';
+
+interface ResolvedDesignSystemWorkspaceProject {
+  projectId: string;
+  files: ProjectFile[];
+}
 
 interface SetupState {
   company: string;
@@ -236,6 +243,26 @@ function readRememberedGenerationJob(designSystemId: string): string | null {
   } catch {
     return null;
   }
+}
+
+async function resolveDesignSystemWorkspaceProject(
+  system: Pick<DesignSystemDetail, 'id' | 'projectId'>,
+): Promise<ResolvedDesignSystemWorkspaceProject | null> {
+  const workspace = await ensureDesignSystemWorkspace(system.id);
+  if (workspace) {
+    return {
+      projectId: workspace.project.id,
+      files: workspace.files,
+    };
+  }
+  if (!system.projectId) return null;
+  const fallbackProject = await getProject(system.projectId);
+  if (!fallbackProject) return null;
+  const files = await fetchProjectFiles(system.projectId);
+  return {
+    projectId: system.projectId,
+    files,
+  };
 }
 
 function clearRememberedGenerationJob(designSystemId: string): void {
@@ -811,6 +838,7 @@ export function DesignSystemDetailView({
   onSystemsRefresh,
   onProjectsRefresh,
 }: DetailProps) {
+  const { locale } = useI18n();
   const [system, setSystem] = useState<DesignSystemDetail | null>(null);
   const [body, setBody] = useState('');
   const [tab, setTab] = useState<ReviewTab>('system');
@@ -825,6 +853,7 @@ export function DesignSystemDetailView({
   const [chatSeed, setChatSeed] = useState<{ id: string; text: string } | null>(null);
   const [workspaceProjectId, setWorkspaceProjectId] = useState<string | null>(null);
   const [workspaceProjectFiles, setWorkspaceProjectFiles] = useState<ProjectFile[]>([]);
+  const [workspaceLoadError, setWorkspaceLoadError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [projectChatMessages, setProjectChatMessages] = useState<ChatMessage[]>([]);
@@ -840,6 +869,7 @@ export function DesignSystemDetailView({
   const pendingWorkspaceFileWritesRef = useRef<Map<string, string>>(new Map());
   const workspaceTabsLoadedRef = useRef(false);
   const openedProjectRef = useRef<string | null>(null);
+  const suppressedInitialConversationProjectIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -847,6 +877,7 @@ export function DesignSystemDetailView({
     setRevisions([]);
     setWorkspaceProjectId(null);
     setWorkspaceProjectFiles([]);
+    setWorkspaceLoadError(null);
     setConversations([]);
     setActiveConversationId(null);
     setProjectChatMessages([]);
@@ -856,6 +887,7 @@ export function DesignSystemDetailView({
     setWorkspaceOpenRequest(null);
     openedProjectRef.current = null;
     workspaceTabsLoadedRef.current = false;
+    suppressedInitialConversationProjectIdsRef.current.clear();
     pendingWorkspaceFileWritesRef.current.clear();
     void fetchDesignSystem(id).then((detail) => {
       if (cancelled) return;
@@ -872,18 +904,24 @@ export function DesignSystemDetailView({
   }, [id]);
 
   useEffect(() => {
-    if (!system || system.source !== 'user') return undefined;
-    const designSystemId = system.id;
+    if (!system) return undefined;
+    const currentSystem = system;
     let cancelled = false;
     async function syncWorkspaceProject() {
-      const workspace = await ensureDesignSystemWorkspace(designSystemId);
-      if (cancelled || !workspace) return;
-      setWorkspaceProjectId(workspace.project.id);
-      setWorkspaceProjectFiles(workspace.files);
-      if (onOpenProject && openedProjectRef.current !== workspace.project.id) {
-        openedProjectRef.current = workspace.project.id;
+      setWorkspaceLoadError(null);
+      const resolved = await resolveDesignSystemWorkspaceProject(currentSystem);
+      if (cancelled) return;
+      if (!resolved) {
+        setWorkspaceLoadError('Could not open the design system workspace.');
+        return;
+      }
+      const projectId = resolved.projectId;
+      setWorkspaceProjectId(projectId);
+      setWorkspaceProjectFiles(resolved.files);
+      if (onOpenProject && openedProjectRef.current !== projectId) {
+        openedProjectRef.current = projectId;
         await onProjectsRefresh?.();
-        if (!cancelled) onOpenProject(workspace.project.id);
+        if (!cancelled) onOpenProject(projectId);
       }
     }
     void syncWorkspaceProject();
@@ -895,6 +933,9 @@ export function DesignSystemDetailView({
   useEffect(() => {
     if (!workspaceProjectId) return undefined;
     const projectId = workspaceProjectId;
+    if (suppressedInitialConversationProjectIdsRef.current.delete(projectId)) {
+      return undefined;
+    }
     let cancelled = false;
     async function loadWorkspaceConversation() {
       const existing = await listConversations(projectId);
@@ -1214,14 +1255,17 @@ export function DesignSystemDetailView({
     });
   }
 
-  async function ensureWorkspaceProject() {
+  async function ensureWorkspaceProject(options?: { suppressInitialConversation?: boolean }) {
     if (!system) return workspaceProjectId;
     if (workspaceProjectId) return workspaceProjectId;
-    const workspace = await ensureDesignSystemWorkspace(system.id);
-    if (!workspace) return null;
-    setWorkspaceProjectId(workspace.project.id);
-    setWorkspaceProjectFiles(workspace.files);
-    return workspace.project.id;
+    const resolved = await resolveDesignSystemWorkspaceProject(system);
+    if (!resolved) return null;
+    if (options?.suppressInitialConversation) {
+      suppressedInitialConversationProjectIdsRef.current.add(resolved.projectId);
+    }
+    setWorkspaceProjectId(resolved.projectId);
+    setWorkspaceProjectFiles(resolved.files);
+    return resolved.projectId;
   }
 
   const refreshWorkspaceProjectFiles = useCallback(async (projectId: string) => {
@@ -1421,6 +1465,7 @@ export function DesignSystemDetailView({
         commentAttachments,
         model: selectedModel?.model ?? null,
         reasoning: selectedModel?.reasoning ?? null,
+        locale,
         analyticsHints: {
           entryFrom: wasOnboardingHandoff
             ? 'onboarding_design_system'
@@ -1564,6 +1609,7 @@ export function DesignSystemDetailView({
       ensureWorkspaceProject,
       feedbackSection,
       introChatMessages,
+      locale,
       onProjectsRefresh,
       persistProjectMessage,
       projectChatMessages,
@@ -1585,25 +1631,29 @@ export function DesignSystemDetailView({
   }, []);
 
   const createProjectChatConversation = useCallback(() => {
-    const projectId = workspaceProjectId;
-    if (!projectId) {
-      setChatSeed({
-        id: `general-${Date.now()}`,
-        text: 'Update this design system: ',
+    void (async () => {
+      const projectId = workspaceProjectId ?? await ensureWorkspaceProject({
+        suppressInitialConversation: true,
       });
-      return;
-    }
-    void createConversation(projectId, 'Design system').then((fresh) => {
-      if (!fresh) return;
+      if (!projectId) {
+        setChatError('Could not open the design system workspace.');
+        return;
+      }
+      const fresh = await createConversation(projectId, 'Design system');
+      if (!fresh) {
+        setChatError('Could not create a design system conversation.');
+        return;
+      }
       setConversations((current) => [fresh, ...current]);
       setActiveConversationId(fresh.id);
       setProjectChatMessages([]);
+      setChatError(null);
       setChatSeed({
         id: `general-${Date.now()}`,
         text: 'Update this design system: ',
       });
-    });
-  }, [workspaceProjectId]);
+    })();
+  }, [ensureWorkspaceProject, workspaceProjectId]);
 
   async function resolveRevision(
     revision: DesignSystemRevision,
@@ -1866,6 +1916,8 @@ export function DesignSystemDetailView({
                 tabsState={workspaceTabsState}
                 onTabsStateChange={persistWorkspaceTabsState}
               />
+            ) : workspaceLoadError ? (
+              <div className="viewer-empty">{workspaceLoadError}</div>
             ) : (
               <div className="viewer-empty">Opening the design system workspace...</div>
             )}

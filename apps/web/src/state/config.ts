@@ -685,6 +685,9 @@ export function mergeDaemonConfig(
 export function mergeDaemonMediaProviders(
   localConfig: AppConfig,
   daemonProviders: AppConfig['mediaProviders'] | null,
+  options?: {
+    preserveLocalProviderIds?: ReadonlySet<string>;
+  },
 ): AppConfig {
   if (daemonProviders == null) {
     return { ...localConfig };
@@ -702,7 +705,14 @@ export function mergeDaemonMediaProviders(
   const mediaProviders = { ...(localConfig.mediaProviders ?? {}) };
   for (const [providerId, daemonEntry] of Object.entries(daemonProviders ?? {})) {
     if (!isStoredMediaProviderEntryPresent(daemonEntry)) continue;
-    mediaProviders[providerId] = { ...daemonEntry };
+    const localEntry = mediaProviders[providerId];
+    const preserveLocalPendingEdit = Boolean(
+      options?.preserveLocalProviderIds?.has(providerId)
+      && hasRecoverableLocalMediaProviderFields(localEntry),
+    );
+    mediaProviders[providerId] = preserveLocalPendingEdit
+      ? { ...daemonEntry, ...localEntry }
+      : { ...daemonEntry };
   }
 
   return {

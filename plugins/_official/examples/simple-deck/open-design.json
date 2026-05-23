@@ -133,6 +133,12 @@
     "pipeline": {
       "stages": [
         {
+          "id": "discovery",
+          "atoms": [
+            "discovery-question-form"
+          ]
+        },
+        {
           "id": "generate",
           "atoms": [
             "file-write",

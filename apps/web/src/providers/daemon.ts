@@ -183,6 +183,7 @@ export interface DaemonStreamOptions {
   reasoning?: string | null;
   research?: ResearchOptions;
   context?: RunContextSelection;
+  locale?: string;
   initialLastEventId?: string | null;
   onRunCreated?: (runId: string) => void;
   onRunStatus?: (status: ChatRunStatus) => void;
@@ -243,6 +244,7 @@ export async function streamViaDaemon({
   reasoning,
   research,
   context,
+  locale,
   initialLastEventId,
   onRunCreated,
   onRunStatus,
@@ -272,6 +274,7 @@ export async function streamViaDaemon({
     commentAttachments: commentAttachments ?? [],
     model: model ?? null,
     reasoning: reasoning ?? null,
+    locale,
     ...(context ? { context } : {}),
     ...(research ? { research } : {}),
     ...(analyticsHints ? { analyticsHints } : {}),

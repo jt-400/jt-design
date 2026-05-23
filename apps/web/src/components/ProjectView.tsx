@@ -12,7 +12,7 @@ import { createHtmlArtifactManifest, inferLegacyManifest } from '../artifacts/ma
 import { resolveHtmlPointerArtifactTarget } from '../artifacts/pointer';
 import { validateHtmlArtifact } from '../artifacts/validate';
 import { createArtifactParser } from '../artifacts/parser';
-import { useT } from '../i18n';
+import { useI18n } from '../i18n';
 import { streamMessage } from '../providers/anthropic';
 import {
   fetchChatRunStatus,
@@ -34,6 +34,7 @@ import {
   fetchProjectFiles,
   fetchSkill,
   patchPreviewCommentStatus,
+  projectRawUrl,
   upsertPreviewComment,
   writeProjectTextFile,
 } from '../providers/registry';
@@ -132,6 +133,7 @@ import {
   mergeAttachedComments,
   removeAttachedComment,
 } from '../comments';
+import { buildPptxExportPrompt } from '../lib/build-pptx-export-prompt';
 import { AppChromeHeader } from './AppChromeHeader';
 import { AvatarMenu } from './AvatarMenu';
 import { HandoffButton } from './HandoffButton';
@@ -143,6 +145,7 @@ import {
   useCritiqueTheaterEnabled,
 } from './Theater';
 import { decideAutoOpenAfterWrite } from './auto-open-file';
+import { collectReferencedJsxNames } from '../runtime/jsx-module-refs';
 import { FileWorkspace } from './FileWorkspace';
 import { Icon } from './Icon';
 import {
@@ -158,6 +161,10 @@ import { buildContinueInCliToast } from '../lib/build-continue-in-cli-toast';
 import { buildClipboardPrompt } from '../lib/build-clipboard-prompt';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { effectiveMaxTokens } from '../state/maxTokens';
+
+type ProjectChatSendMeta = ChatSendMeta & {
+  retryOfAssistantId?: string;
+};
 
 interface Props {
   project: Project;
@@ -477,7 +484,7 @@ export function ProjectView({
   onProjectChange,
   onProjectsRefresh,
 }: Props) {
-  const t = useT();
+  const { locale, t } = useI18n();
   const analytics = useAnalytics();
   // P0 page_view page_name=chat_panel — fire once per project mount.
   // ProjectView outlives conversation switches (ChatPane is keyed by
@@ -1008,6 +1015,32 @@ export function ProjectView({
     projectFilesRef.current = projectFiles;
   }, [projectFiles]);
 
+  // Cache HTML file contents so the auto-open module check (issue #2744) does
+  // not re-fetch unchanged entries on every Write. Keyed by file name with the
+  // mtime stored alongside, so a rewrite REPLACES the file's single entry
+  // rather than accreting a new key. Bounded by the project's HTML file count.
+  const htmlContentCacheRef = useRef<Map<string, { mtime: number; text: string | null }>>(
+    new Map(),
+  );
+  const readProjectHtml = useCallback(
+    async (name: string): Promise<string | null> => {
+      const file = projectFilesRef.current.find((entry) => entry.name === name);
+      const mtime = file?.mtime ?? 0;
+      const cached = htmlContentCacheRef.current.get(name);
+      if (cached && cached.mtime === mtime) return cached.text;
+      try {
+        const response = await fetch(projectRawUrl(project.id, name));
+        const text = response.ok ? await response.text() : null;
+        htmlContentCacheRef.current.set(name, { mtime, text });
+        return text;
+      } catch {
+        htmlContentCacheRef.current.set(name, { mtime, text: null });
+        return null;
+      }
+    },
+    [project.id],
+  );
+
   const refreshLiveArtifacts = useCallback(async (): Promise<LiveArtifactSummary[]> => {
     const next = await fetchLiveArtifacts(project.id);
     setLiveArtifacts(next);
@@ -1385,6 +1418,7 @@ export function ProjectView({
       audioVoiceOptions,
       audioVoiceOptionsError: audioVoiceOptionsLookupError,
       streamFormat: config.mode === 'api' ? 'plain' : undefined,
+      locale,
       userInstructions: config.customInstructions,
       projectInstructions: project.customInstructions,
     });
@@ -1398,6 +1432,7 @@ export function ProjectView({
     designSystems,
     config.mode,
     config.customInstructions,
+    locale,
   ]);
 
   const persistMessage = useCallback(
@@ -1880,6 +1915,7 @@ export function ProjectView({
         const textBuffer = createBufferedTextUpdates({
           updateMessage: (updater) => updateMessageById(message.id, updater),
           persistSoon,
+          flushAndPersistNow: () => persistNow({ keepalive: true }),
           onContentDelta: applyContentDelta,
         });
         reattachTextBuffersRef.current.add(textBuffer);
@@ -1923,7 +1959,7 @@ export function ProjectView({
                   ...prev,
                   content: needsFullReplay ? replayedContent : prev.content,
                   events: needsFullReplay ? replayedEvents : prev.events,
-                  runStatus: 'succeeded',
+                  runStatus: resolveSucceededRunStatus(prev.runStatus),
                   endedAt: prev.endedAt ?? Date.now(),
                 }),
                 true,
@@ -1935,9 +1971,12 @@ export function ProjectView({
               clearActiveRunRefs(reattachConversationId, controller, cancelController);
               clearStreamingMarker(reattachConversationId);
               void (async () => {
-                const beforeFiles = await refreshProjectFiles();
-                const beforeFileNames = new Set(beforeFiles.map((f) => f.name));
-                let nextFiles = beforeFiles;
+                const preTurn = message.preTurnFileNames;
+                let nextFiles = await refreshProjectFiles();
+                // Use the turn-start snapshot when available so reload
+                // recovers files produced before the artifact write too;
+                // fall back to the current list for legacy messages.
+                const beforeFileNames = new Set(preTurn ?? nextFiles.map((f) => f.name));
                 let recoveredExistingArtifact: ProjectFile | null = null;
                 if (parsedArtifact?.html) {
                   const runStartedAt = status.createdAt || message.startedAt || message.createdAt;
@@ -1954,9 +1993,8 @@ export function ProjectView({
                     nextFiles = await refreshProjectFiles();
                   }
                 }
-                const produced = recoveredExistingArtifact
-                  ? [recoveredExistingArtifact]
-                  : nextFiles.filter((f) => !beforeFileNames.has(f.name));
+                const diff = nextFiles.filter((f) => !beforeFileNames.has(f.name));
+                const produced = mergeRecoveredArtifact(diff, recoveredExistingArtifact);
                 if (produced.length > 0) {
                   updateMessageById(
                     message.id,
@@ -2069,17 +2107,26 @@ export function ProjectView({
       prompt: string,
       attachments: ChatAttachment[],
       commentAttachments: ChatCommentAttachment[] = commentsToAttachments(attachedComments),
-      meta?: ChatSendMeta,
+      meta?: ProjectChatSendMeta,
     ) => {
       if (!activeConversationId) return;
       if (messagesConversationIdRef.current !== activeConversationId) return;
       if (currentConversationBusy) return;
-      if (!prompt.trim() && attachments.length === 0 && commentAttachments.length === 0) return;
+      const retryTarget = meta?.retryOfAssistantId
+        ? resolveRetryTarget(messages, meta.retryOfAssistantId)
+        : null;
+      if (meta?.retryOfAssistantId && !retryTarget) return;
+      if (
+        !retryTarget &&
+        !prompt.trim() &&
+        attachments.length === 0 &&
+        commentAttachments.length === 0
+      ) return;
       setChatSeed(null);
       const runConversationId = activeConversationId;
       setError(null);
       const startedAt = Date.now();
-      const userMsg: ChatMessage = {
+      const userMsg: ChatMessage = retryTarget?.userMsg ?? {
         id: randomUUID(),
         role: 'user',
         content: prompt,
@@ -2087,6 +2134,8 @@ export function ProjectView({
         attachments: attachments.length > 0 ? attachments : undefined,
         commentAttachments: commentAttachments.length > 0 ? commentAttachments : undefined,
       };
+      const runAttachments = userMsg.attachments ?? [];
+      const runCommentAttachments = userMsg.commentAttachments ?? [];
       const selectedAgent =
         config.mode === 'daemon' && config.agentId
           ? agentsById.get(config.agentId)
@@ -2107,7 +2156,8 @@ export function ProjectView({
               selectedAgentChoice?.model,
             )
           : apiProtocolModelLabel(config.apiProtocol, config.model);
-      const assistantId = randomUUID();
+      const preTurnFileNames = projectFiles.map((f) => f.name);
+      const assistantId = retryTarget?.failedAssistant.id ?? randomUUID();
       const assistantMsg: ChatMessage = {
         id: assistantId,
         role: 'assistant',
@@ -2115,9 +2165,10 @@ export function ProjectView({
         agentId: assistantAgentId,
         agentName: assistantAgentName,
         events: [],
-        createdAt: startedAt,
+        createdAt: retryTarget?.failedAssistant.createdAt ?? startedAt,
         runStatus: config.mode === 'daemon' ? 'running' : undefined,
         startedAt,
+        preTurnFileNames,
       };
       let latestAssistantMsg: ChatMessage = assistantMsg;
       const updateConversationLatestRun = (
@@ -2146,14 +2197,16 @@ export function ProjectView({
         );
       };
       activeCompletionNotificationRunsRef.current.add(assistantId);
-      const nextHistory = [...messages, userMsg];
+      const nextHistory = retryTarget
+        ? [...retryTarget.priorMessages, userMsg]
+        : [...messages, userMsg];
       setMessages([...nextHistory, assistantMsg]);
       markStreamingConversation(runConversationId);
       updateConversationLatestRun(config.mode === 'daemon' ? 'running' : 'queued');
       setArtifact(null);
       savedArtifactRef.current = null;
       onTouchProject();
-      persistMessage(userMsg);
+      if (!retryTarget) persistMessage(userMsg);
       // Intentionally do NOT persist `assistantMsg` here. In daemon mode it
       // starts as runStatus='running' with no runId, which the source-level
       // guard treats as a phantom — the first DB write happens inside
@@ -2161,14 +2214,14 @@ export function ProjectView({
       // mode there is no runStatus, and the buffered text path will persist
       // as soon as the first delta lands.
       persistMessage(assistantMsg);
-      if (commentAttachments.length > 0) {
-        void patchAttachedStatuses(commentAttachments, 'applying');
+      if (runCommentAttachments.length > 0) {
+        void patchAttachedStatuses(runCommentAttachments, 'applying');
         setAttachedComments([]);
       }
       // If this is the first turn, derive a working title from the prompt
       // so the conversation is identifiable in the dropdown without a
       // round-trip through the agent.
-      if (messages.length === 0) {
+      if (!retryTarget && messages.length === 0) {
         const title = isDesignSystemWorkspacePrompt(prompt)
           ? DESIGN_SYSTEM_WORKSPACE_DISPLAY_TITLE
           : prompt.slice(0, 60).trim();
@@ -2206,7 +2259,7 @@ export function ProjectView({
       // Snapshot the file list at turn-start so we can diff after the
       // agent finishes and surface anything new (e.g. a generated .pptx)
       // as download chips on the assistant message.
-      const beforeFileNames = new Set(projectFiles.map((f) => f.name));
+      const beforeFileNames = new Set(preTurnFileNames);
 
       const parser = createArtifactParser();
       let parsedArtifact: Artifact | null = null;
@@ -2230,6 +2283,13 @@ export function ProjectView({
           persistTimer = null;
           persistMessageById(assistantId);
         }, 500);
+      };
+      const persistAssistantNowKeepalive = () => {
+        if (persistTimer) {
+          clearTimeout(persistTimer);
+          persistTimer = null;
+        }
+        persistMessageById(assistantId, { keepalive: true });
       };
       const pushEvent = (ev: AgentEvent) => {
         textBuffer.flush();
@@ -2276,8 +2336,16 @@ export function ProjectView({
               // Only auto-open if the file actually landed in the project's
               // file list — otherwise an out-of-project Write (e.g. an
               // upstream repo edit) would spawn a permanent placeholder tab.
-              void refreshProjectFiles().then((nextFiles) => {
-                const decision = decideAutoOpenAfterWrite(filePath, nextFiles);
+              void refreshProjectFiles().then(async (nextFiles) => {
+                // A .jsx/.tsx loaded by a sibling HTML entry is a module of a
+                // multi-file React prototype, not a standalone page — don't
+                // strand the user on a dead-end preview tab. Issue #2744.
+                const moduleFileNames = /\.(jsx|tsx)$/i.test(filePath)
+                  ? await collectReferencedJsxNames(nextFiles, readProjectHtml)
+                  : undefined;
+                const decision = decideAutoOpenAfterWrite(filePath, nextFiles, {
+                  moduleFileNames,
+                });
                 if (decision.shouldOpen && decision.fileName) {
                   requestOpenFile(decision.fileName);
                 }
@@ -2332,6 +2400,7 @@ export function ProjectView({
       const textBuffer = createBufferedTextUpdates({
         updateMessage: updateAssistant,
         persistSoon: persistAssistantSoon,
+        flushAndPersistNow: persistAssistantNowKeepalive,
         onContentDelta: applyContentDelta,
       });
       sendTextBufferRef.current = textBuffer;
@@ -2388,8 +2457,8 @@ export function ProjectView({
               true,
               { telemetryFinalized: true },
             );
-            if (commentAttachments.length > 0) {
-              void patchAttachedStatuses(commentAttachments, 'failed');
+            if (runCommentAttachments.length > 0) {
+              void patchAttachedStatuses(runCommentAttachments, 'failed');
             }
             clearActiveRunRefs(runConversationId, controller, cancelController);
             clearStreamingMarker(runConversationId);
@@ -2408,8 +2477,8 @@ export function ProjectView({
               runStatus: finalRunStatus,
             };
           });
-          if (commentAttachments.length > 0) {
-            void patchAttachedStatuses(commentAttachments, 'needs_review');
+          if (runCommentAttachments.length > 0) {
+            void patchAttachedStatuses(runCommentAttachments, 'needs_review');
           }
           clearActiveRunRefs(runConversationId, controller, cancelController);
           clearStreamingMarker(runConversationId);
@@ -2453,8 +2522,8 @@ export function ProjectView({
               ? 'failed'
               : prev.runStatus,
           }));
-          if (commentAttachments.length > 0) {
-            void patchAttachedStatuses(commentAttachments, 'failed');
+          if (runCommentAttachments.length > 0) {
+            void patchAttachedStatuses(runCommentAttachments, 'failed');
           }
           clearActiveRunRefs(runConversationId, controller, cancelController);
           clearStreamingMarker(runConversationId);
@@ -2517,11 +2586,12 @@ export function ProjectView({
           skillIds: Array.isArray(meta?.skillIds) ? meta.skillIds : [],
           context: meta?.context,
           designSystemId: project.designSystemId ?? null,
-          attachments: attachments.map((a) => a.path),
-          commentAttachments,
+          attachments: runAttachments.map((a) => a.path),
+          commentAttachments: runCommentAttachments,
           research: meta?.research,
           model: choice?.model ?? null,
           reasoning: choice?.reasoning ?? null,
+          locale,
           ...(dsAnalyticsHints ? { analyticsHints: dsAnalyticsHints } : {}),
           onRunCreated: (runId) => {
             const pinnedAssistant = {
@@ -2660,6 +2730,7 @@ export function ProjectView({
       currentConversationBusy,
       messages,
       config,
+      locale,
       agentsById,
       composedSystemPrompt,
       onTouchProject,
@@ -2680,6 +2751,14 @@ export function ProjectView({
       onProjectsRefresh,
       onProjectChange,
     ],
+  );
+
+  const handleRetry = useCallback(
+    (assistantMessage: ChatMessage) => {
+      if (currentConversationActionDisabled) return;
+      void handleSend('', [], [], { retryOfAssistantId: assistantMessage.id });
+    },
+    [currentConversationActionDisabled, handleSend],
   );
 
   useEffect(() => {
@@ -3100,36 +3179,7 @@ export function ProjectView({
   const handleExportAsPptx = useCallback(
     (fileName: string) => {
       if (currentConversationActionDisabled) return;
-      const baseTitle = fileName.replace(/\.html?$/i, '') || fileName;
-      const prompt =
-        `Export @${fileName} as an editable PPTX file titled "${baseTitle}".\n\n` +
-        `**Generate.** Use python-pptx (preferred — full XML control). Apply the ` +
-        `footer-rail + cursor-flow discipline from \`skills/pptx-html-fidelity-audit/SKILL.md\` ` +
-        `Step 4 from the start: define \`CONTENT_MAX_Y = 6.70"\` and \`FOOTER_TOP = 6.85"\` ` +
-        `as constants, route every content block through a \`Cursor\` that refuses to cross ` +
-        `the rail, and use budget centering (not \`MARGIN_TOP\`) for hero/cover slides. ` +
-        `Preserve \`<em>\` / \`<i>\` as \`italic=True\` on Latin runs only — never on CJK. ` +
-        `Set the \`<a:latin>\` and \`<a:ea>\` typeface slots explicitly so Chinese runs ` +
-        `don't fall back to Microsoft JhengHei.\n\n` +
-        `**Verify (mandatory gate).** After writing, run ` +
-        `\`python skills/pptx-html-fidelity-audit/scripts/verify_layout.py "${baseTitle}.pptx"\` ` +
-        `(quote the path — filenames may contain spaces). Zero rail violations is the gate ` +
-        `for "shippable". If violations remain, walk Steps 2-4 of the SKILL.md ` +
-        `(extract dump → audit table → re-export) — do not declare done by eyeballing the ` +
-        `deck. If 🟡 typography issues surface (italic missing, unexpected \`Calibri\` / ` +
-        `\`Microsoft JhengHei\` in the XML), consult ` +
-        `\`skills/pptx-html-fidelity-audit/references/font-discipline.md\` for the ` +
-        `five-layer font audit.\n\n` +
-        `**Customizing rails.** The default \`CONTENT_MAX_Y = 6.70"\` / ` +
-        `\`FOOTER_TOP = 6.85"\` constants suit a 16:9 canvas with a slim footer. If the ` +
-        `design system needs different rails (wider footer, 4:3 canvas), pass ` +
-        `\`--content-max-y\` / \`--canvas-h\` to \`verify_layout.py\` and update the matching ` +
-        `constants in the export script — see \`references/layout-discipline.md\` §1.\n\n` +
-        `If \`python-pptx\` or the verifier is unavailable in this environment, say so ` +
-        `explicitly — don't claim fidelity is correct without evidence.\n\n` +
-        `Save into the current project folder (this conversation's working directory) as ` +
-        `\`${baseTitle}.pptx\`. Report the on-disk path and a 1-line fidelity summary ` +
-        `(e.g. "0 rail violations across 14 slides") when done.`;
+      const prompt = buildPptxExportPrompt(fileName);
       const attachment: ChatAttachment = {
         path: fileName,
         name: fileName,
@@ -3891,6 +3941,7 @@ export function ProjectView({
             <span
               className="title editable"
               data-testid="project-title"
+              title={project.name}
               tabIndex={0}
               role="textbox"
               suppressContentEditableWarning
@@ -4042,6 +4093,7 @@ export function ProjectView({
               onDetachComment={detachPreviewComment}
               onDeleteComment={(commentId) => void removePreviewComment(commentId)}
               onSend={handleSend}
+              onRetry={handleRetry}
               onStop={handleStop}
               onRequestOpenFile={requestOpenFile}
               onRequestPluginFolderAgentAction={handlePluginFolderAgentAction}
@@ -4219,6 +4271,35 @@ function isActiveRunStatus(status: ChatMessage['runStatus']): boolean {
   return status === 'queued' || status === 'running';
 }
 
+export interface RetryTarget {
+  failedAssistant: ChatMessage;
+  userMsg: ChatMessage;
+  priorMessages: ChatMessage[];
+}
+
+export function resolveRetryTarget(
+  messages: ChatMessage[],
+  failedAssistantId: string,
+): RetryTarget | null {
+  const failedIndex = messages.findIndex(
+    (message) =>
+      message.id === failedAssistantId &&
+      message.role === 'assistant' &&
+      message.runStatus === 'failed',
+  );
+  if (failedIndex <= 0 || failedIndex !== messages.length - 1) return null;
+
+  const userMsg = messages[failedIndex - 1];
+  const failedAssistant = messages[failedIndex];
+  if (!userMsg || userMsg.role !== 'user' || !failedAssistant) return null;
+
+  return {
+    failedAssistant,
+    userMsg,
+    priorMessages: messages.slice(0, failedIndex - 1),
+  };
+}
+
 function latestDesignSystemActivityEvents(messages: ChatMessage[]): AgentEvent[] {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -4367,6 +4448,27 @@ export function resolveSucceededRunStatus(status: ChatMessage['runStatus']): Cha
   return status === 'failed' || status === 'canceled' ? status : 'succeeded';
 }
 
+export function computeProducedFiles(
+  beforeNames: ReadonlySet<string> | readonly string[] | undefined,
+  next: readonly ProjectFile[],
+): ProjectFile[] | undefined {
+  if (!beforeNames) return undefined;
+  const set = beforeNames instanceof Set ? beforeNames : new Set(beforeNames);
+  return next.filter((f) => !set.has(f.name));
+}
+
+// Reattach with a recovered (on-disk) artifact must still include any
+// other files the turn produced before the artifact write — replacing
+// the diff with a single file was the regression noted on PR #2383.
+export function mergeRecoveredArtifact(
+  diff: readonly ProjectFile[],
+  recovered: ProjectFile | null,
+): ProjectFile[] {
+  if (!recovered) return [...diff];
+  if (diff.some((f) => f.name === recovered.name)) return [...diff];
+  return [...diff, recovered];
+}
+
 export function clearStreamingConversationMarker(
   currentConversationId: string | null,
   completedConversationId?: string | null,
@@ -4413,10 +4515,15 @@ type BufferedTextUpdates = ReturnType<typeof createBufferedTextUpdates>;
 function createBufferedTextUpdates({
   updateMessage,
   persistSoon,
+  flushAndPersistNow,
   onContentDelta,
 }: {
   updateMessage: (updater: (prev: ChatMessage) => ChatMessage) => void;
   persistSoon: () => void;
+  // Synchronous flush + persist with a transport that survives page
+  // unload (PUT with keepalive). Invoked by the pagehide handler so the
+  // last buffered chunk isn't lost when the user reloads mid-stream.
+  flushAndPersistNow?: () => void;
   onContentDelta?: (delta: string) => void;
 }) {
   let pendingContentDelta = '';
@@ -4427,6 +4534,7 @@ function createBufferedTextUpdates({
   let flushing = false;
   let needsFlush = false;
   const hasDocument = typeof document !== 'undefined';
+  const hasWindow = typeof window !== 'undefined';
 
   const cancelScheduledFlush = () => {
     if (flushFrame !== null) {
@@ -4518,6 +4626,9 @@ function createBufferedTextUpdates({
     if (hasDocument) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
     }
+    if (hasWindow) {
+      window.removeEventListener('pagehide', onPageHide);
+    }
   };
 
   function onVisibilityChange() {
@@ -4526,8 +4637,18 @@ function createBufferedTextUpdates({
     }
   }
 
+  function onPageHide() {
+    flush();
+    // persistSoon's 500ms debounce never fires once the document tears
+    // down, so synchronously PUT with keepalive instead.
+    flushAndPersistNow?.();
+  }
+
   if (hasDocument) {
     document.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  if (hasWindow) {
+    window.addEventListener('pagehide', onPageHide);
   }
 
   return { appendContent, appendTextEvent, appendEvent, flush, cancel };
