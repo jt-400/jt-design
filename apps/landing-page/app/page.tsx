@@ -1,7 +1,7 @@
 /*
- * Open Design — Atelier Zero landing page.
+ * JT Design — Atelier Zero landing page.
  *
- * Mirrors `design-templates/open-design-landing/example.html` 1:1. When the canonical
+ * Mirrors `skills/open-design-landing/example.html` 1:1. When the canonical
  * example.html changes, mirror the diff here and into `app/globals.css`.
  *
  * Static React component rendered by Astro. The Header and Wire components
@@ -9,58 +9,9 @@
  * islands only when behavior is needed.
  */
 
-import { Header, type HeaderProps } from './_components/header';
+import { Header } from './_components/header';
 import { Wire } from './_components/wire';
-import {
-  DEFAULT_LOCALE,
-  LANDING_LOCALES,
-  getCommonCopy,
-  getHomePageCopy,
-  getLocaleDefinition,
-  localePath,
-  localizedHref,
-  type LandingLocaleCode,
-} from './i18n';
-import {
-  heroImage,
-  heroImageSrcset,
-  imageAsset,
-  PRECISE_LAZY_PLACEHOLDER,
-} from './image-assets';
-
-/**
- * `<img>` wrapper for non-hero homepage images. Outputs `data-precise-src`
- * so the global IntersectionObserver in `precise-lazyload.astro` swaps it
- * to a real `src` once the element enters viewport ± 300px. Avoids the
- * Chrome native-lazy 1250–3000px over-prefetch on this image-heavy page.
- *
- * Use a plain `<img>` (NOT this) for above-the-fold or LCP-critical images
- * where waiting on IntersectionObserver would defeat the priority hint.
- */
-function LazyImg(props: { src: string; alt?: string; className?: string }) {
-  return (
-    <img
-      src={PRECISE_LAZY_PLACEHOLDER}
-      data-precise-src={props.src}
-      alt={props.alt ?? ''}
-      className={props.className}
-      decoding='async'
-    />
-  );
-}
-
-function BreakText({ text }: { text: string }) {
-  return (
-    <>
-      {text.split('\n').map((part, index) => (
-        <span key={`${part}-${index}`}>
-          {index > 0 ? <br /> : null}
-          {part}
-        </span>
-      ))}
-    </>
-  );
-}
+import { heroImage, imageAsset } from './image-assets';
 
 const arrowOut = (
   <svg viewBox='0 0 24 24'>
@@ -77,21 +28,20 @@ const arrowPlus = (
 
 const NBSP = '\u00A0';
 
-// Canonical project URLs. Keep in sync with design-templates/open-design-landing/example.html.
+// Canonical project URLs. Keep in sync with skills/open-design-landing/example.html.
 //
 // `data-github-version` invariant: every wrapper must contain ONLY the version
 // string (e.g. `v0.3.0`), never any surrounding label or punctuation. The
 // inline enhancement script in `app/pages/index.astro` assigns `textContent`
 // on each slot, so any extra text inside the wrapper would be clobbered.
-const REPO = 'https://github.com/nexu-io/open-design';
+const REPO = 'https://github.com/tuatahi.art';
 const REPO_RELEASES = `${REPO}/releases`;
 const REPO_ISSUES = `${REPO}/issues`;
 const REPO_CONTRIBUTORS = `${REPO}/graphs/contributors`;
 const REPO_DAEMON = `${REPO}/tree/main/apps/daemon`;
 const REPO_SKILLS = `${REPO}/tree/main/skills`;
 const REPO_DESIGN_SYSTEMS = `${REPO}/tree/main/design-systems`;
-const REPO_DOCS = `${REPO}#readme`;
-const DISCORD = 'https://discord.gg/9ptkbbqRu';
+const REPO_DOCS = (file: string) => `${REPO}/blob/main/${file}`;
 
 // Lineage / inspiration projects — make every brand mention clickable.
 const LINEAGE = {
@@ -140,233 +90,116 @@ const WIRE_CITIES = [
   { name: 'Sydney', coord: '33.87°S' },
 ] as const;
 
-/**
- * Question / answer pair for the visible homepage FAQ. The exact same
- * shape is consumed by the FAQPage JSON-LD in `pages/index.astro`, so
- * the two stay in lockstep: every schema entry has a visible answer on
- * the page (which Google requires for the rich result to be eligible).
- */
-export interface HomeFaqEntry {
-  q: string;
-  a: string;
-}
-
-interface PageProps {
-  /**
-   * Live counts from the Markdown catalogs. Required: every visible
-   * "X skills / Y systems" claim on the page reads from here so meta,
-   * nav, hero copy, capability cards, labs pills, selected-work
-   * fractions, and the footer Library never disagree.
-   */
-  counts: HeaderProps['counts'] & {
-    /** Optional richer breakdown used by the Labs filter pills. */
-    byMode?: Readonly<Record<string, number>>;
-    byPlatform?: Readonly<Record<string, number>>;
-  };
-  github: {
-    starsLabel: string;
-    versionLabel: string;
-  };
-  /**
-   * FAQ pairs the page renders above the contact section. Required so
-   * the structured-data block on `/` can reference visible content
-   * verbatim — see `FAQ Rules` in `growth/seo-opendesigner-analysis.md`.
-   */
-  faq: ReadonlyArray<HomeFaqEntry>;
-  /** Locale for shared chrome, topbar language links, and localized FAQ text. */
-  locale?: LandingLocaleCode;
-}
-
-/**
- * Format a count for inline editorial copy. Returns the live value when
- * positive (so a fresh `git pull` immediately reflects the new totals),
- * falls back to a neutral em-dash when the catalog couldn't be read so
- * we never publish "0 skills" to a visitor by mistake.
- */
-function fmt(n: number | undefined): string {
-  return typeof n === 'number' && n > 0 ? String(n) : '—';
-}
-
-/** Two-digit padded count for the Labs pills (matches the "04", "27" feel). */
-function pad2(n: number | undefined): string {
-  if (typeof n !== 'number' || n <= 0) return '—';
-  return n < 10 ? `0${n}` : String(n);
-}
-
-export default function Page({
-  counts,
-  github,
-  faq,
-  locale = DEFAULT_LOCALE,
-}: PageProps) {
-  const skills = fmt(counts.skills);
-  const systems = fmt(counts.systems);
-  const deckCount = pad2(counts.byMode?.deck);
-  const prototypeCount = pad2(counts.byMode?.prototype);
-  const mobileCount = pad2(counts.byPlatform?.mobile);
-  const commonCopy = getCommonCopy(locale);
-  const home = getHomePageCopy(locale);
-  const localeDef = getLocaleDefinition(locale);
-  const localeOptions = LANDING_LOCALES.map((entry) => ({
-    ...entry,
-    href: localePath(entry.code, '/'),
-  }));
-  const href = (path: string) => localizedHref(path, locale);
-
+export default function Page() {
   return (
     <>
       {/* side rails (rotated brand text) */}
       <div className='side-rail right' data-od-id='rail-right'>
-        <span className='rail-text'>{home.rail.right}</span>
+        <span className='rail-text'>
+          JT Design — Vol. 01 · Issue Nº 26 · Apache-2.0
+        </span>
       </div>
       <div className='side-rail left' data-od-id='rail-left'>
-        <span className='rail-text'>{home.rail.left}</span>
+        <span className='rail-text'>
+          Skills · Systems · Agents · BYOK · Local-first
+        </span>
       </div>
 
       <div className='shell'>
-        {/* ====== STICKY CHROME (topbar + nav as one unit) ====== */}
-        <div className='site-chrome' data-chrome-headroom>
         {/* ====== TOP METADATA STRIP ====== */}
         <div className='topbar' data-od-id='topbar'>
           <div className='container topbar-inner'>
             <span>
               <b>OD / 2026</b>
-              {NBSP}·{NBSP}
-              {commonCopy.topbar.issue ?? 'Vol. 01 / Issue Nº 26'}
+              {NBSP}·{NBSP}Vol. 01 / Issue Nº 26
             </span>
             <span className='mid'>
               <span>
-                {commonCopy.topbar.filedUnder}{' '}
-                <b className='coral'>{commonCopy.topbar.category}</b>
+                Filed under <b className='coral'>Design · Intelligence</b>
               </span>
-              <span>{commonCopy.topbar.madeOnEarth}</span>
+              <span>Apache-2.0 · Made on Earth</span>
             </span>
             <span className='right'>
               <a className='topbar-link' href={REPO_RELEASES} {...ext}>
                 <span className='pulse' />
-                {commonCopy.topbar.live} ·{' '}
-                <span data-github-version>{github.versionLabel}</span>
+                Live · <span data-github-version>v0.3.0</span>
               </a>
-              <details className='locale-switch' data-locale-switch>
-                <summary
-                  className='locale-trigger'
-                  aria-label={commonCopy.topbar.languageSwitcherLabel}
-                >
-                  <span className='locale-trigger-prefix' aria-hidden='true'>
-                    {commonCopy.topbar.languageSwitcherPrefix ?? 'Lang'}
-                  </span>
-                  <span className='locale-trigger-sep' aria-hidden='true'>
-                    ·
-                  </span>
-                  <span className='locale-trigger-code'>
-                    {localeDef.shortLabel}
-                  </span>
-                  <svg
-                    className='locale-trigger-caret'
-                    viewBox='0 0 8 5'
-                    aria-hidden='true'
-                    focusable='false'
-                  >
-                    <path
-                      d='M0.5 0.75 L4 4 L7.5 0.75'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='1'
-                      strokeLinecap='square'
-                    />
-                  </svg>
-                </summary>
-                <div className='locale-menu' role='menu'>
-                  {localeOptions.map((entry) => (
-                    <a
-                      className={`locale-menu-item${
-                        entry.code === locale ? ' is-active' : ''
-                      }`}
-                      role='menuitem'
-                      data-locale-link
-                      data-locale-code={entry.code}
-                      href={entry.href}
-                      lang={entry.htmlLang}
-                      aria-current={entry.code === locale ? 'true' : undefined}
-                      key={entry.code}
-                    >
-                      <span className='locale-menu-code'>
-                        {entry.code.toUpperCase()}
-                      </span>
-                      <span className='locale-menu-label'>{entry.label}</span>
-                    </a>
-                  ))}
-                </div>
-              </details>
+              <span className='locale-switch'>
+                <b>EN</b>
+                {' · '}
+                <a className='topbar-link' href={REPO} {...ext} title='Localization in progress — open the repo on GitHub'>
+                  DE
+                </a>
+                {' · '}
+                <a className='topbar-link' href={REPO} {...ext} title='Localization in progress — open the repo on GitHub'>
+                  中文
+                </a>
+                {' · '}
+                <a className='topbar-link' href={REPO} {...ext} title='Localization in progress — open the repo on GitHub'>
+                  日本語
+                </a>
+              </span>
             </span>
           </div>
         </div>
 
         {/* ====== NAV ====== */}
-        {/* Headroom slide handled by `.site-chrome` wrapper above. */}
-        <Header counts={counts} github={github} locale={locale} />
-        </div>{/* /site-chrome */}
+        {/* Headroom-style sticky header with live GitHub star count. */}
+        <Header />
 
         {/* ====== HERO ====== */}
         <section className='hero' id='top' data-od-id='hero'>
           <div className='container hero-grid'>
             <div className='hero-copy'>
-              <a
-                className='hero-discord-pill'
-                href={DISCORD}
-                aria-label={home.hero.discordAria}
-                {...ext}
-                data-reveal
-              >
-                <span aria-hidden='true'>●</span>
-                {home.hero.joinDiscord}
-              </a>
               <span className='label' data-reveal>
-                {home.hero.label} <span className='ix'>· {home.hero.issue}</span>
+                Open-source design studio <span className='ix'>· Nº 01</span>
               </span>
               <h1 className='display' data-reveal>
-                {home.hero.titlePrefix} <em>{home.hero.titleEmphasis}</em>{' '}
-                {home.hero.titleMiddle} <em>{home.hero.titleSecondEmphasis}</em>
+                Designing <em>intelligence</em> with skills, <em>taste,</em> and{' '}
+                <em>code</em>
                 <span className='dot'>.</span>
               </h1>
               <p className='lead' data-reveal>
-                {home.hero.lead(skills, systems)}
+                The open-source alternative to Claude Design. Your existing
+                coding agent — Claude · Codex · Cursor · Gemini · OpenCode ·
+                Qwen — becomes the design engine, driven by 31 composable
+                skills and 72 brand-grade design systems.
               </p>
               <div className='hero-actions' data-reveal>
                 <a className='btn btn-primary' href={REPO} {...ext}>
-                  {home.hero.star}
+                  Star us on GitHub
                   <span className='arrow'>{arrowOut}</span>
                 </a>
                 <a className='btn btn-ghost' href={REPO_RELEASES} {...ext}>
-                  {home.hero.download}
+                  Download desktop
                   <span className='arrow'>{arrowPlus}</span>
                 </a>
               </div>
               <div className='hero-stats' data-reveal>
                 <div className='stat'>
-                  <span className='ring solid'>{skills}</span>
+                  <span className='ring solid'>31</span>
                   <span className='stat-label'>
-                    <b>{home.hero.stats[0].strong}</b>
-                    {home.hero.stats[0].text}
+                    <b>skills</b>shippable
                   </span>
                 </div>
                 <div className='stat'>
-                  <span className='ring'>{systems}</span>
+                  <span className='ring'>72</span>
                   <span className='stat-label'>
-                    <b>{home.hero.stats[1].strong}</b>
-                    {home.hero.stats[1].text}
+                    <b>systems</b>portable
                   </span>
                 </div>
                 <div className='stat'>
                   <span className='ring coral'>12</span>
                   <span className='stat-label'>
-                    <b>{home.hero.stats[2].strong}</b>
-                    {home.hero.stats[2].text}
+                    <b>CLIs</b>BYO agent
                   </span>
                 </div>
               </div>
               <div className='hero-foot' data-reveal>
-                <span className='meta'>↳{NBSP}{NBSP}{home.hero.foot}</span>
+                <span className='meta'>
+                  ↳{NBSP}{NBSP}pnpm tools-dev{NBSP}{NBSP}·{NBSP}{NBSP}3 commands
+                  to start
+                </span>
                 <span className='coord'>
                   52.5200° N{NBSP}·{NBSP}13.4050° E
                 </span>
@@ -378,39 +211,25 @@ export default function Page({
               <span className='corner bl' />
               <span className='corner br' />
               <span className='annot annot-tl coord'>FIG. 01 / OD-26</span>
-              <span className='annot annot-tr'>{home.hero.plate}</span>
+              <span className='annot annot-tr'>Plate Nº 08</span>
               <span className='annot annot-bl coord'>SHA · a1b2c3d</span>
               <span className='annot annot-br'>
-                {home.hero.composedIn}
-                {NBSP}
-                <span style={{ color: 'var(--coral)' }}>Open Design</span>
+                Composed in{NBSP}
+                <span style={{ color: 'var(--coral)' }}>JT Design</span>
               </span>
-              <img
-                src={heroImage}
-                srcSet={heroImageSrcset}
-                sizes='(max-width: 768px) 100vw, 60vw'
-                width={1280}
-                height={1600}
-                alt=''
-                fetchPriority='high'
-                decoding='async'
-              />
+              <img src={heroImage} alt='' />
               <div className='index'>
                 <span>
-                  <span className='n'>01</span>
-                  {home.hero.index[0]}
+                  <span className='n'>01</span>Detect
                 </span>
                 <span className='on'>
-                  <span className='n'>02</span>
-                  {home.hero.index[1]}
+                  <span className='n'>02</span>Discover
                 </span>
                 <span>
-                  <span className='n'>03</span>
-                  {home.hero.index[2]}
+                  <span className='n'>03</span>Direct
                 </span>
                 <span>
-                  <span className='n'>04</span>
-                  {home.hero.index[3]}
+                  <span className='n'>04</span>Deliver
                 </span>
               </div>
             </div>
@@ -431,122 +250,65 @@ export default function Page({
          */}
         <Wire cities={WIRE_CITIES} />
 
-        {/* ====== OFFICIAL SOURCE STRIP ======
-         *
-         * Thin attestation band that reinforces the canonical surfaces:
-         * official site, GitHub repo, releases, download, docs, Discord.
-         * Mirrors the Organization.sameAs + SoftwareApplication signals
-         * emitted in `pages/index.astro` so both Google entity-merge and
-         * human verification see the same six links in the same order.
-         * Keep this small (one line of icons + labels); the editorial
-         * sections below carry the heavy explanation.
-         */}
-        <section
-          className='official-strip'
-          data-od-id='official-strip'
-          aria-label={home.official.aria}
-        >
-          <div className='container'>
-            <div className='official-strip-inner' data-reveal>
-              <span className='official-strip-label'>
-                {home.official.label} <span className='ix'>· Nº 00</span>
-              </span>
-              <ul className='official-strip-list'>
-                <li>
-                  <a href={href('/official/')}>
-                    <span className='label'>{home.official.items[0].label}</span>
-                    <span className='value'>{home.official.items[0].value}</span>
-                  </a>
-                </li>
-                <li>
-                  <a href={REPO} {...ext}>
-                    <span className='label'>{home.official.items[1].label}</span>
-                    <span className='value'>{home.official.items[1].value}</span>
-                  </a>
-                </li>
-                <li>
-                  <a href={REPO_RELEASES} {...ext}>
-                    <span className='label'>{home.official.items[2].label}</span>
-                    <span className='value' data-github-version>
-                      {github.versionLabel}
-                    </span>
-                  </a>
-                </li>
-                <li>
-                  <a href={REPO_RELEASES} {...ext}>
-                    <span className='label'>{home.official.items[3].label}</span>
-                    <span className='value'>{home.official.items[3].value}</span>
-                  </a>
-                </li>
-                <li>
-                  <a href={REPO_DOCS} {...ext}>
-                    <span className='label'>{home.official.items[4].label}</span>
-                    <span className='value'>{home.official.items[4].value}</span>
-                  </a>
-                </li>
-                <li>
-                  <a href={DISCORD} {...ext}>
-                    <span className='label'>{home.official.items[5].label}</span>
-                    <span className='value'>{home.official.items[5].value}</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
         {/* ====== ABOUT ====== */}
         <section className='about' data-od-id='about'>
           <div className='container'>
             <div className='sec-rule'>
               <span className='roman'>I.</span>
               <span className='meta-grp'>
-                <span>{home.about.rule}</span>
+                <span>About / Manifesto</span>
                 <span className='dot-mark'>•</span>
-                <span>{home.about.volume}</span>
+                <span>JT Design / Volume 01</span>
               </span>
               <span>002 / 008</span>
             </div>
             <div className='about-grid'>
               <div className='about-copy' data-reveal>
                 <span className='label'>
-                  {home.about.label} <span className='ix'>· Nº 02</span>
+                  About the studio <span className='ix'>· Nº 02</span>
                 </span>
                 <h2 className='display'>
-                  {home.about.titlePrefix} <em>{home.about.titleAgent}</em>{' '}
-                  {home.about.titleMiddle} <em>{home.about.titleCollaborator}</em>{' '}
-                  {home.about.titleSuffix}
+                  We treat <em>your agent</em> as a creative{' '}
+                  <em>collaborator,</em> not a black box
                   <span className='dot'>.</span>
                 </h2>
-                <p className='lead'>{home.about.lead}</p>
+                <p className='lead'>
+                  The strongest coding agents already live on your laptop. We
+                  don&rsquo;t ship one — we wire them into a skill-driven design
+                  workflow that runs locally with{' '}
+                  <code className='code-inline'>pnpm tools-dev</code>, deploys
+                  the web layer to Vercel, and stays BYOK at every layer.
+                </p>
                 <a className='btn btn-ghost' href={REPO_DAEMON} {...ext}>
-                  {home.about.approach}
+                  Read our approach
                   <span className='arrow'>{arrowOut}</span>
                 </a>
                 <div className='footer-row'>
                   <span className='mark'>Ø</span>
-                  <span>{home.about.practice}</span>
+                  <span>Research · Design · Engineering · Repeat</span>
                   <span className='stamp'>
-                    <span>{home.about.stampTop}</span>
-                    <span style={{ color: 'var(--ink)' }}>
-                      {home.about.stampBottom}
-                    </span>
+                    <span>Studio practice</span>
+                    <span style={{ color: 'var(--ink)' }}>Est. MMXXVI</span>
                   </span>
                 </div>
               </div>
               <div className='about-art' data-reveal='right'>
-                <LazyImg src={imageAsset('about.png', { width: 1024, quality: 82 })} />
+                <img src={imageAsset('about.png', { width: 1024, quality: 82 })} alt='' />
                 <div className='about-side-note'>
                   <b />
-                  {home.about.sideNote.map((line) => (
-                    <span key={line}>
-                      {line}
-                      <br />
-                    </span>
-                  ))}
+                  From model behavior
+                  <br />
+                  to visual taste, we
+                  <br />
+                  prototype the full
+                  <br />
+                  stack of creative
+                  <br />
+                  systems.
                 </div>
                 <div className='about-caption'>
-                  <b>{home.about.caption}</b>
+                  <b>Studies in form · perception · machine imagination.</b>
+                  (JT Design, MMXXVI)
                 </div>
               </div>
             </div>
@@ -563,9 +325,9 @@ export default function Page({
             <div className='sec-rule'>
               <span className='roman'>II.</span>
               <span className='meta-grp'>
-                <span>{home.capabilities.rule}</span>
+                <span>Capabilities · Skills · Systems</span>
                 <span className='dot-mark'>•</span>
-                <span>{home.capabilities.surfaces}</span>
+                <span>4 surfaces / 1 loop</span>
               </span>
               <span>003 / 008</span>
             </div>
@@ -573,26 +335,29 @@ export default function Page({
               <div className='capabilities-art' data-reveal='left'>
                 <span className='corner tl' />
                 <span className='corner br' />
-                <LazyImg src={imageAsset('capabilities.png', { width: 1024, quality: 82 })} />
+                <img src={imageAsset('capabilities.png', { width: 1024, quality: 82 })} alt='' />
                 <div className='ribbon'>
-                  <b>{home.capabilities.ribbon}</b>
+                  <b>OPEN DESIGN</b>
+                  {NBSP}·{NBSP}CAPABILITIES MATRIX{NBSP}·{NBSP}OD/26
                 </div>
               </div>
               <div className='capabilities-copy' data-reveal>
                 <span className='label'>
-                  {home.capabilities.label} <span className='ix'>· Nº 03</span>
+                  Capabilities <span className='ix'>· Nº 03</span>
                 </span>
                 <h2 className='display'>
-                  {home.capabilities.titlePrefix}{' '}
-                  <em>{home.capabilities.titleEmphasis}</em>{' '}
-                  {home.capabilities.titleSuffix}
-                  <span className='dot'>.</span>
+                  Skills, systems, and surfaces <em>for creative</em>{' '}
+                  intelligence<span className='dot'>.</span>
                 </h2>
-                <p className='lead'>{home.capabilities.lead}</p>
+                <p className='lead'>
+                  We blend human taste with whichever agent you already trust to
+                  ship interfaces, decks, and editorial pages that feel
+                  intentional, expressive, and alive.
+                </p>
                 <div className='cards'>
                   <div className='card' data-reveal>
                     <div className='num'>
-                      01<span className='tag'>{home.capabilities.cards[0].tag}</span>
+                      01<span className='tag'>Skills</span>
                     </div>
                     <svg
                       className='icon'
@@ -605,13 +370,21 @@ export default function Page({
                       <path d='M14 14l5 5' />
                     </svg>
                     <h3>
-                      <BreakText text={home.capabilities.cards[0].title} />
+                      Skills,
+                      <br />
+                      not plugins
                     </h3>
-                    <p>{home.capabilities.cards[0].body(skills, systems)}</p>
+                    <p>
+                      31 file-based{' '}
+                      <code style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>
+                        SKILL.md
+                      </code>{' '}
+                      bundles. Drop a folder in, restart the daemon, it appears.
+                    </p>
                     <a
                       className='arrow-mark'
                       href={REPO_SKILLS}
-                      aria-label={home.capabilities.cards[0].aria}
+                      aria-label='Browse all skills on GitHub'
                       {...ext}
                     >
                       {arrowOut}
@@ -619,7 +392,7 @@ export default function Page({
                   </div>
                   <div className='card' data-reveal>
                     <div className='num'>
-                      02<span className='tag'>{home.capabilities.cards[1].tag}</span>
+                      02<span className='tag'>Systems</span>
                     </div>
                     <svg
                       className='icon'
@@ -634,13 +407,21 @@ export default function Page({
                       <rect x='12.5' y='12.5' width='8' height='8' />
                     </svg>
                     <h3>
-                      <BreakText text={home.capabilities.cards[1].title} />
+                      Design Systems
+                      <br />
+                      as Markdown
                     </h3>
-                    <p>{home.capabilities.cards[1].body(skills, systems)}</p>
+                    <p>
+                      72 portable{' '}
+                      <code style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>
+                        DESIGN.md
+                      </code>{' '}
+                      systems — Linear, Vercel, Stripe, Apple, Cursor, Figma…
+                    </p>
                     <a
                       className='arrow-mark'
                       href={REPO_DESIGN_SYSTEMS}
-                      aria-label={home.capabilities.cards[1].aria}
+                      aria-label='Browse all design systems on GitHub'
                       {...ext}
                     >
                       {arrowOut}
@@ -648,7 +429,7 @@ export default function Page({
                   </div>
                   <div className='card' data-reveal>
                     <div className='num'>
-                      03<span className='tag'>{home.capabilities.cards[2].tag}</span>
+                      03<span className='tag'>Adapters</span>
                     </div>
                     <svg
                       className='icon'
@@ -661,13 +442,19 @@ export default function Page({
                       <circle cx='16' cy='12' r='4.5' />
                     </svg>
                     <h3>
-                      <BreakText text={home.capabilities.cards[2].title} />
+                      12 Agent
+                      <br />
+                      Adapters
                     </h3>
-                    <p>{home.capabilities.cards[2].body(skills, systems)}</p>
+                    <p>
+                      Claude · Codex · Gemini · Cursor · Copilot · OpenCode ·
+                      Devin · Hermes · Pi · Kimi · Kiro · Qwen — auto-detected
+                      on $PATH.
+                    </p>
                     <a
                       className='arrow-mark'
                       href={REPO_DAEMON}
-                      aria-label={home.capabilities.cards[2].aria}
+                      aria-label='Read the agent adapter source on GitHub'
                       {...ext}
                     >
                       {arrowOut}
@@ -675,7 +462,7 @@ export default function Page({
                   </div>
                   <div className='card' data-reveal>
                     <div className='num'>
-                      04<span className='tag'>{home.capabilities.cards[3].tag}</span>
+                      04<span className='tag'>BYOK</span>
                     </div>
                     <svg
                       className='icon'
@@ -688,13 +475,18 @@ export default function Page({
                       <path d='M9 12h6M12 9v6' />
                     </svg>
                     <h3>
-                      <BreakText text={home.capabilities.cards[3].title} />
+                      BYOK
+                      <br />
+                      at every layer
                     </h3>
-                    <p>{home.capabilities.cards[3].body(skills, systems)}</p>
+                    <p>
+                      OpenAI-compatible proxy. DeepSeek, Groq, OpenRouter, your
+                      self-hosted vLLM — paste a baseUrl + key, ship.
+                    </p>
                     <a
                       className='arrow-mark'
                       href={REPO}
-                      aria-label={home.capabilities.cards[3].aria}
+                      aria-label='See BYOK setup on GitHub'
                       {...ext}
                     >
                       {arrowOut}
@@ -712,92 +504,98 @@ export default function Page({
             <div className='sec-rule'>
               <span className='roman'>III.</span>
               <span className='meta-grp'>
-                <span>{home.labs.rule}</span>
+                <span>Labs / Skills Catalog</span>
                 <span className='dot-mark'>•</span>
-                <span>{home.labs.ongoing(skills)}</span>
+                <span>05 of 31 ongoing</span>
               </span>
               <span>004 / 008</span>
             </div>
             <div className='labs-head'>
               <div data-reveal>
                 <span className='label'>
-                  {home.labs.label} <span className='ix'>· Nº 04</span>
+                  Labs <span className='ix'>· Nº 04</span>
                 </span>
                 <h2 className='display' style={{ marginTop: 30 }}>
-                  {home.labs.titlePrefix} <em>{home.labs.titleEmphasis}</em>{' '}
-                  {home.labs.titleSuffix}
-                  <span className='dot'>.</span>
+                  A living archive of <em>experiments</em> in skills, decks, and
+                  machine-made form<span className='dot'>.</span>
                 </h2>
               </div>
               <div className='pills' data-reveal='right'>
-                <a className='pill active' href={href('/skills/')}>
-                  {home.labs.pills.all}
-                  <span className='count'>{skills}</span>
-                </a>
-                <a className='pill' href={href('/skills/mode/prototype/')}>
-                  {home.labs.pills.prototype}
-                  <span className='count'>{prototypeCount}</span>
-                </a>
-                <a className='pill' href={href('/skills/mode/deck/')}>
-                  {home.labs.pills.deck}
-                  <span className='count'>{deckCount}</span>
-                </a>
-                <a className='pill' href={href('/skills/')}>
-                  {home.labs.pills.mobile}
-                  <span className='count'>{mobileCount}</span>
-                </a>
-                <a className='pill' href={href('/skills/')}>
-                  {home.labs.pills.office}
-                  <span className='count'>—</span>
-                </a>
+                <button type='button' className='pill active'>
+                  All<span className='count'>31</span>
+                </button>
+                <button type='button' className='pill'>
+                  Prototype<span className='count'>27</span>
+                </button>
+                <button type='button' className='pill'>
+                  Deck<span className='count'>04</span>
+                </button>
+                <button type='button' className='pill'>
+                  Mobile<span className='count'>03</span>
+                </button>
+                <button type='button' className='pill'>
+                  Office<span className='count'>08</span>
+                </button>
               </div>
             </div>
             <div className='labs-meta'>
               <span className='ring'>05</span>
               <div className='meta-text'>
-                <b>{home.labs.metaTitle}</b>
-                <BreakText text={home.labs.metaBody} />
+                <b>Ongoing experiments</b>
+                documenting ideas in flux
+                <br />
+                building intelligence
+                <br />
+                through making
               </div>
             </div>
             <div className='labs-grid'>
               {[
                 {
-                  badge: home.labs.items[0].badge,
+                  badge: 'Deck',
                   num: 'Nº 01',
-                  title: home.labs.items[0].title,
-                  body: home.labs.items[0].body,
+                  title: 'Magazine Decks',
+                  body: (
+                    <>
+                      Editorial-grade slide decks with{' '}
+                      <code style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>
+                        guizang-ppt
+                      </code>
+                      . Magazine layout, WebGL hero.
+                    </>
+                  ),
                   src: imageAsset('lab-1.png', { width: 768, quality: 82 }),
                   href: `${REPO_SKILLS}/guizang-ppt`,
                 },
                 {
-                  badge: home.labs.items[1].badge,
+                  badge: 'Media',
                   num: 'Nº 02',
-                  title: home.labs.items[1].title,
-                  body: home.labs.items[1].body,
+                  title: 'Synthetic Matter',
+                  body: 'Gpt-image-2 + Seedance + HyperFrames. Image, video, audio — same chat surface as code.',
                   src: imageAsset('lab-2.png', { width: 768, quality: 82 }),
                   href: `${REPO_SKILLS}/hyperframes`,
                 },
                 {
-                  badge: home.labs.items[2].badge,
+                  badge: 'Loop',
                   num: 'Nº 03',
-                  title: home.labs.items[2].title,
-                  body: home.labs.items[2].body,
+                  title: 'Prompt Choreography',
+                  body: 'The interactive question form pops before a single pixel is improvised. 30s of radios beats 30min of redirects.',
                   src: imageAsset('lab-3.png', { width: 768, quality: 82 }),
                   href: `${REPO_SKILLS}/design-brief`,
                 },
                 {
-                  badge: home.labs.items[3].badge,
+                  badge: 'Critique',
                   num: 'Nº 04',
-                  title: home.labs.items[3].title,
-                  body: home.labs.items[3].body,
+                  title: 'Visual Reasoning',
+                  body: '5-dim self-critique gates every artifact: philosophy · hierarchy · execution · specificity · restraint.',
                   src: imageAsset('lab-4.png', { width: 768, quality: 82 }),
                   href: `${REPO_SKILLS}/critique`,
                 },
                 {
-                  badge: home.labs.items[4].badge,
+                  badge: 'Runtime',
                   num: 'Nº 05',
-                  title: home.labs.items[4].title,
-                  body: home.labs.items[4].body,
+                  title: 'Soft Systems',
+                  body: 'Sandboxed iframe preview. Streaming todos. Real-cwd filesystem. Adaptive loops between human and machine.',
                   src: imageAsset('lab-5.png', { width: 768, quality: 82 }),
                   href: REPO_DAEMON,
                 },
@@ -805,7 +603,7 @@ export default function Page({
                 <div className='lab' key={lab.num} data-reveal>
                   <div className='lab-img'>
                     <span className='badge'>{lab.badge}</span>
-                    <LazyImg src={lab.src} />
+                    <img src={lab.src} alt='' />
                   </div>
                   <div className='num-row'>
                     <span>{lab.num}</span>
@@ -816,7 +614,7 @@ export default function Page({
                   <a
                     className='arrow-mark'
                     href={lab.href}
-                    aria-label={home.labs.openAria(lab.title)}
+                    aria-label={`Open ${lab.title} on GitHub`}
                     {...ext}
                   >
                     {arrowOut}
@@ -836,14 +634,14 @@ export default function Page({
                 <span />
               </div>
               <span className='meta'>
-                {home.labs.foot(skills)}
-                {NBSP}·{NBSP}
+                05 / 31 SKILLS{NBSP}·{NBSP}
                 <a
-                  href={href('/skills/')}
+                  href={REPO_SKILLS}
                   className='library-link'
                   style={{ color: 'var(--coral)' }}
+                  {...ext}
                 >
-                  {home.labs.viewLibrary}
+                  VIEW FULL LIBRARY →
                 </a>
               </span>
             </div>
@@ -856,52 +654,53 @@ export default function Page({
             <div className='sec-rule'>
               <span className='roman'>IV.</span>
               <span className='meta-grp'>
-                <span>{home.method.rule}</span>
+                <span>Method / Loop</span>
                 <span className='dot-mark'>•</span>
-                <span>{home.method.stages}</span>
+                <span>04 stages, iterative</span>
               </span>
               <span>005 / 008</span>
             </div>
             <div className='method-head'>
               <div data-reveal>
                 <span className='label'>
-                  {home.method.label} <span className='ix'>· Nº 05</span>
+                  Method <span className='ix'>· Nº 05</span>
                 </span>
                 <h2 className='display' style={{ marginTop: 30 }}>
-                  {home.method.titlePrefix} <em>{home.method.titleEmphasis}</em>{' '}
-                  {home.method.titleSuffix}
-                  <span className='dot'>.</span>
+                  From <em>signals</em> to systems<span className='dot'>.</span>
                 </h2>
               </div>
               <div className='right' data-reveal='right'>
                 <span className='plus'>+</span>
-                <p>{home.method.lead}</p>
+                <p>
+                  Every stage is iterative, visual, and research-driven —
+                  composable files, not opaque prompts.
+                </p>
               </div>
             </div>
             <div className='method-grid'>
               {[
                 {
                   num: '01',
-                  title: home.method.steps[0].title,
-                  body: home.method.steps[0].body(skills, systems),
+                  title: 'Detect',
+                  body: 'The daemon scans your $PATH for 12 coding agents and auto-loads 31 skills + 72 systems on boot.',
                   src: imageAsset('method-1.png', { width: 816, quality: 82 }),
                 },
                 {
                   num: '02',
-                  title: home.method.steps[1].title,
-                  body: home.method.steps[1].body(skills, systems),
+                  title: 'Discover',
+                  body: 'Turn 1 is a question form — surface, audience, tone, scale, brand context. Locked in 30 seconds.',
                   src: imageAsset('method-2.png', { width: 816, quality: 82 }),
                 },
                 {
                   num: '03',
-                  title: home.method.steps[2].title,
-                  body: home.method.steps[2].body(skills, systems),
+                  title: 'Direct',
+                  body: 'Pick one of 5 deterministic visual directions. Palette in OKLch, font stack, layout posture cues.',
                   src: imageAsset('method-3.png', { width: 816, quality: 82 }),
                 },
                 {
                   num: '04',
-                  title: home.method.steps[3].title,
-                  body: home.method.steps[3].body(skills, systems),
+                  title: 'Deliver',
+                  body: 'The agent writes to disk, you preview in a sandboxed iframe, export HTML / PDF / PPTX / ZIP / Markdown.',
                   src: imageAsset('method-4.png', { width: 816, quality: 82 }),
                 },
               ].map((step) => (
@@ -912,7 +711,7 @@ export default function Page({
                   </h4>
                   <p>{step.body}</p>
                   <div className='img'>
-                    <LazyImg src={step.src} />
+                    <img src={step.src} alt='' />
                   </div>
                 </div>
               ))}
@@ -920,11 +719,11 @@ export default function Page({
             <div className='method-foot'>
               <div className='left'>
                 <span className='ring' />
-                <span>{home.method.footLeft}</span>
+                <span>Skills inform everything. Files make it real.</span>
               </div>
               <div className='right'>
                 <a className='method-repo-link' href={REPO} {...ext}>
-                  <b>github.com/nexu-io/open-design</b>
+                  <b>github.com/tuatahi.art</b>
                 </a>
                 {NBSP}·{NBSP}Apache-2.0
               </div>
@@ -938,23 +737,22 @@ export default function Page({
             <div className='work-rule'>
               <span className='roman'>V.</span>
               <span style={{ display: 'inline-flex', gap: 24 }}>
-                <span>{home.work.rule}</span>
+                <span>Selected Work · 2026 Catalog</span>
                 <span style={{ color: 'var(--coral)' }}>•</span>
-                <span>{home.work.editedBy}</span>
+                <span>Edited by JT Design</span>
               </span>
               <span>006 / 008</span>
             </div>
             <div className='work-grid'>
               <div className='work-copy' data-reveal>
-                <span className='label'>{home.work.label}</span>
+                <span className='label'>Selected work</span>
                 <h2>
-                  {home.work.titlePrefix} <em>{home.work.titleEmphasisA}</em>{' '}
-                  {home.work.titleMiddle} <em>{home.work.titleEmphasisB}</em>{' '}
-                  {home.work.titleSuffix}
+                  Skills that turn briefs into <em>memorable</em> shippable{' '}
+                  <em>artifacts</em>
                   <span className='dot'>.</span>
                 </h2>
-                <a className='work-link' href={href('/skills/')}>
-                  {home.work.viewAll(skills)}
+                <a className='work-link' href={REPO_SKILLS} {...ext}>
+                  View all 31 skills
                 </a>
               </div>
               <a
@@ -964,17 +762,20 @@ export default function Page({
                 {...ext}
               >
                 <div className='label-row'>
-                  <span className='small-label'>{home.work.cards[0].label}</span>
-                  <span className='index'>01 / {skills}</span>
+                  <span className='small-label'>Featured skill</span>
+                  <span className='index'>01 / 31</span>
                 </div>
-                <h3>{home.work.cards[0].title}</h3>
-                <p>{home.work.cards[0].body}</p>
+                <h3>guizang-ppt</h3>
+                <p>
+                  Magazine-style web PPT for product launches and pitch decks.
+                  Bundled verbatim, original LICENSE preserved.
+                </p>
                 <div className='img'>
-                  <LazyImg src={imageAsset('work-1.png', { width: 768, quality: 82 })} />
+                  <img src={imageAsset('work-1.png', { width: 768, quality: 82 })} alt='' />
                 </div>
                 <div className='meta-row'>
-                  <span className='year'>{home.work.cards[0].metaLeft}</span>
-                  <span>{home.work.cards[0].metaRight}</span>
+                  <span className='year'>2026 · DECK</span>
+                  <span>DEFAULT</span>
                 </div>
               </a>
               <a
@@ -984,17 +785,21 @@ export default function Page({
                 {...ext}
               >
                 <div className='label-row'>
-                  <span className='small-label'>{home.work.cards[1].label}</span>
-                  <span className='index'>04 / {systems}</span>
+                  <span className='small-label'>Companion system</span>
+                  <span className='index'>04 / 72</span>
                 </div>
-                <h3>{home.work.cards[1].title}</h3>
-                <p>{home.work.cards[1].body}</p>
+                <h3>kami</h3>
+                <p>
+                  An editorial paper system. Warm parchment canvas, ink-blue
+                  accent, serif-led hierarchy — multilingual by design (EN ·
+                  zh-CN · ja).
+                </p>
                 <div className='img'>
-                  <LazyImg src={imageAsset('work-2.png', { width: 768, quality: 82 })} />
+                  <img src={imageAsset('work-2.png', { width: 768, quality: 82 })} alt='' />
                 </div>
                 <div className='meta-row'>
-                  <span className='year'>{home.work.cards[1].metaLeft}</span>
-                  <span>{home.work.cards[1].metaRight}</span>
+                  <span className='year'>2026 · PAPER</span>
+                  <span>SYSTEM</span>
                 </div>
               </a>
             </div>
@@ -1033,31 +838,34 @@ export default function Page({
             <div className='sec-rule'>
               <span className='roman'>VI.</span>
               <span className='meta-grp'>
-                <span>{home.testimonial.rule}</span>
+                <span>Collaborators / Lineage</span>
                 <span className='dot-mark'>•</span>
-                <span>{home.testimonial.shoulders}</span>
+                <span>Standing on shoulders</span>
               </span>
               <span>007 / 008</span>
             </div>
             <div className='testimonial-grid'>
               <div className='testimonial-copy' data-reveal>
                 <span className='label'>
-                  {home.testimonial.label} <span className='ix'>· Nº 06</span>
+                  Collaborators <span className='ix'>· Nº 06</span>
                 </span>
                 <h2 style={{ marginTop: 30 }}>
-                  {home.testimonial.quote}
+                  &ldquo;JT Design helped us turn vague <em>AI ideas</em> into
+                  a visual system that felt <em>sharp, believable,</em> and
+                  genuinely new.&rdquo;
                 </h2>
                 <div className='author'>
                   <span className='avatar'>m</span>
                   <p>
-                    {home.testimonial.authorName}
+                    Mina Kovac
                     <br />
-                    <span>{home.testimonial.authorTitle}</span>
+                    <span>Creative Director · North Form</span>
                   </p>
                 </div>
                 <div className='divider' />
                 <p className='partners-text'>
-                  {home.testimonial.partnersText}
+                  Standing on the shoulders of teams shipping open-source design
+                  culture.
                 </p>
                 <div className='partners'>
                   <a
@@ -1077,7 +885,7 @@ export default function Page({
                       </svg>
                     </div>
                     <span>huashu-design</span>
-                    <small>{home.testimonial.partnerLabels[0]}</small>
+                    <small>Philosophy</small>
                   </a>
                   <a
                     className='partner'
@@ -1096,7 +904,7 @@ export default function Page({
                       </svg>
                     </div>
                     <span>guizang-ppt</span>
-                    <small>{home.testimonial.partnerLabels[1]}</small>
+                    <small>Decks</small>
                   </a>
                   <a
                     className='partner'
@@ -1116,7 +924,7 @@ export default function Page({
                       </svg>
                     </div>
                     <span>open-codesign</span>
-                    <small>{home.testimonial.partnerLabels[2]}</small>
+                    <small>UX</small>
                   </a>
                   <a
                     className='partner'
@@ -1135,7 +943,7 @@ export default function Page({
                       </svg>
                     </div>
                     <span>Devin CLI</span>
-                    <small>{home.testimonial.partnerLabels[3]}</small>
+                    <small>Terminal</small>
                   </a>
                   <a
                     className='partner'
@@ -1155,67 +963,17 @@ export default function Page({
                       </svg>
                     </div>
                     <span>hyperframes</span>
-                    <small>{home.testimonial.partnerLabels[4]}</small>
+                    <small>Frames</small>
                   </a>
                 </div>
                 <a className='read-more' href={REPO} {...ext}>
-                  {home.testimonial.readMore}
+                  Read more stories
                 </a>
               </div>
               <div className='testimonial-art' data-reveal='right'>
-                <LazyImg src={imageAsset('testimonial.png', { width: 1024, quality: 82 })} />
+                <img src={imageAsset('testimonial.png', { width: 1024, quality: 82 })} alt='' />
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* ====== FAQ ======
-         *
-         * Visible answers — kept in lockstep with the FAQPage JSON-LD
-         * defined in `app/pages/index.astro`. Each entry mirrors the
-         * `q`/`a` pair, so the structured data describes content the
-         * user actually sees (Google's rich-result eligibility rule).
-         */}
-        <section className='faq' id='faq' data-od-id='faq'>
-          <div className='container'>
-            <div className='sec-rule'>
-              <span className='roman'>VI·5.</span>
-              <span className='meta-grp'>
-                <span>{home.faqSection.rule}</span>
-                <span className='dot-mark'>•</span>
-                <span>{home.faqSection.answers}</span>
-              </span>
-              <span>{`00${faq.length}`.slice(-3)} / 008</span>
-            </div>
-            <div className='faq-head' data-reveal>
-              <span className='label'>
-                {home.faqSection.label} <span className='ix'>· Nº 06.5</span>
-              </span>
-              <h2 className='display'>
-                {home.faqSection.titlePrefix} <em>Open Design</em>,{' '}
-                <em>OpenDesign</em>, {home.faqSection.titleMiddle}{' '}
-                <em>{home.faqSection.titleSuffix}</em>
-                <span className='dot'>.</span>
-              </h2>
-            </div>
-            <ol className='faq-list'>
-              {faq.map(({ q, a }, idx) => (
-                <li className='faq-item' key={q} data-reveal>
-                  <details>
-                    <summary>
-                      <span className='faq-index'>
-                        {String(idx + 1).padStart(2, '0')}
-                      </span>
-                      <span className='faq-q'>{q}</span>
-                      <span className='faq-toggle' aria-hidden='true'>
-                        +
-                      </span>
-                    </summary>
-                    <p className='faq-a'>{a}</p>
-                  </details>
-                </li>
-              ))}
-            </ol>
           </div>
         </section>
 
@@ -1225,38 +983,40 @@ export default function Page({
             <div className='sec-rule'>
               <span className='roman'>VII.</span>
               <span className='meta-grp'>
-                <span>{home.cta.rule}</span>
+                <span>Contact / Conversation</span>
                 <span className='dot-mark'>•</span>
-                <span>{home.cta.command}</span>
+                <span>Three commands to ship</span>
               </span>
               <span>008 / 008</span>
             </div>
             <div className='cta-grid'>
               <div data-reveal>
                 <span className='label'>
-                  {home.cta.label} <span className='ix'>· Nº 07</span>
+                  Start a conversation <span className='ix'>· Nº 07</span>
                 </span>
                 <h2 className='display'>
-                  {home.cta.titlePrefix} <em>{home.cta.titleOpen}</em>{' '}
-                  {home.cta.titleMiddle} <em>{home.cta.titleVisual}</em>{' '}
-                  {home.cta.titleSuffix}
-                  <span className='dot'>.</span>
+                  Let&rsquo;s build something <em>open</em> and{' '}
+                  <em>visually</em> unforgettable<span className='dot'>.</span>
                 </h2>
-                <p className='lead'>{home.cta.lead}</p>
+                <p className='lead'>
+                  Star us on GitHub, drop into the issues, or run{' '}
+                  <code className='code-inline'>pnpm tools-dev</code> tonight.
+                  Three commands and the loop is yours.
+                </p>
                 <div className='cta-actions'>
                   <a className='btn btn-primary' href={REPO} {...ext}>
-                    {home.cta.star}
+                    Star on GitHub
                     <span className='arrow'>{arrowOut}</span>
                   </a>
                   <a className='email-pill' href={REPO_ISSUES} {...ext}>
-                    {home.cta.issue}
+                    Open an issue
                     <span className='arrow-circle'>→</span>
                   </a>
                 </div>
                 <div className='cta-foot'>
-                  <span className='stamp'>● {home.cta.live}</span>
+                  <span className='stamp'>● Live</span>
                   <span>
-                    <span data-github-version>{github.versionLabel}</span> / Apache-2.0
+                    <span data-github-version>v0.3.0</span> / Apache-2.0
                   </span>
                   <span style={{ marginLeft: 'auto' }}>
                     52.5200° N · 13.4050° E
@@ -1264,10 +1024,10 @@ export default function Page({
                 </div>
               </div>
               <div className='cta-art' data-reveal='right'>
-                <LazyImg src={imageAsset('cta.png', { width: 1024, quality: 82 })} />
+                <img src={imageAsset('cta.png', { width: 1024, quality: 82 })} alt='' />
                 <div className='index'>Nº 08</div>
                 <div className='ribbon'>
-                  {home.cta.ribbon}
+                  OPEN DESIGN{NBSP}·{NBSP}FIN.
                 </div>
               </div>
             </div>
@@ -1280,140 +1040,149 @@ export default function Page({
             <div className='foot-grid'>
               <div className='foot-brand'>
                 <a href='#top' className='brand'>
-                  <span className='brand-mark'>
-                    <img src='/logo.webp' alt='' width={44} height={44} />
-                  </span>
-                  <span className='brand-name'>Open Design</span>
+                  <span className='brand-mark'>Ø</span>
+                  <span>JT Design</span>
                 </a>
                 <p style={{ marginTop: 18 }}>
-                  {home.footer.summary}
+                  The open-source alternative to Claude Design. Built on the
+                  shoulders of{' '}
+                  <a
+                    className='inline-link'
+                    href={LINEAGE['huashu-design']}
+                    {...ext}
+                  >
+                    huashu-design
+                  </a>
+                  ,{' '}
+                  <a
+                    className='inline-link'
+                    href={LINEAGE['guizang-ppt']}
+                    {...ext}
+                  >
+                    guizang-ppt
+                  </a>
+                  ,{' '}
+                  <a
+                    className='inline-link'
+                    href={LINEAGE['multica-ai']}
+                    {...ext}
+                  >
+                    multica-ai
+                  </a>
+                  , and{' '}
+                  <a
+                    className='inline-link'
+                    href={LINEAGE['open-codesign']}
+                    {...ext}
+                  >
+                    open-codesign
+                  </a>
+                  .
                 </p>
                 <a
                   className='foot-cta'
                   href={REPO_RELEASES}
-                  aria-label={home.footer.downloadAria}
+                  aria-label='Download the JT Design desktop app'
                   {...ext}
                 >
-                  {home.footer.download}
+                  Download desktop
                   <span className='meta'>
-                    macOS · <span data-github-version>{github.versionLabel}</span>
+                    macOS · <span data-github-version>v0.3.0</span>
                   </span>
                 </a>
               </div>
               <div className='foot-col'>
-                <h5>{home.footer.columns.studio}</h5>
+                <h5>Studio</h5>
                 <ul>
                   <li>
-                    <a href='#agents'>{home.footer.studioLinks[0]}</a>
+                    <a href='#agents'>Capabilities</a>
                   </li>
                   <li>
-                    <a href='#labs'>{home.footer.studioLinks[1]}</a>
+                    <a href='#labs'>Labs</a>
                   </li>
                   <li>
                     <a href={REPO_DAEMON} {...ext}>
-                      {home.footer.studioLinks[2]}
+                      Method
                     </a>
                   </li>
                   <li>
                     <a href={REPO} {...ext}>
-                      {home.footer.studioLinks[3]}
+                      Manifesto
                     </a>
                   </li>
                 </ul>
               </div>
               <div className='foot-col'>
-                <h5>{home.footer.columns.library}</h5>
+                <h5>Library</h5>
                 <ul>
                   <li>
-                    <a href={href('/skills/')}>
-                      {home.footer.libraryLinks.skills(skills)}
+                    <a href={REPO_SKILLS} {...ext}>
+                      31 Skills
                     </a>
                   </li>
                   <li>
-                    <a href={href('/systems/')}>
-                      {home.footer.libraryLinks.systems(systems)}
+                    <a href={REPO_DESIGN_SYSTEMS} {...ext}>
+                      72 Systems
                     </a>
                   </li>
                   <li>
-                    <a href={href('/templates/')}>
-                      {home.footer.libraryLinks.templates}
+                    <a href={REPO_DESIGN_SYSTEMS} {...ext}>
+                      5 Directions
                     </a>
                   </li>
                   <li>
-                    <a href={href('/craft/')}>{home.footer.libraryLinks.craft}</a>
-                  </li>
-                  {/*
-                   * Sister product: HTML Anything is the agent-driven HTML
-                   * editor from the same team. Listed here as a peer to the
-                   * Open Design library facets so the home delivers a real
-                   * inline anchor link to /html-anything/ — nav-only entries
-                   * (the Product dropdown) carry less SEO weight than a body
-                   * anchor in a discoverable section like the footer. The
-                   * brand name stays in English on every locale, so we
-                   * hardcode the label rather than threading a new key
-                   * through 18 home-copy translations.
-                   */}
-                  <li>
-                    <a href='/html-anything/'>HTML Anything</a>
+                    <a href={`${REPO_SKILLS}/hyperframes`} {...ext}>
+                      5 Frames
+                    </a>
                   </li>
                 </ul>
               </div>
               <div className='foot-col'>
-                <h5>{home.footer.columns.connect}</h5>
+                <h5>Connect</h5>
                 <ul>
                   <li>
                     <a href={REPO} {...ext}>
-                      {home.footer.connectLinks[0]}
+                      GitHub
                     </a>
                   </li>
                   <li>
                     <a href={REPO_ISSUES} {...ext}>
-                      {home.footer.connectLinks[1]}
+                      Issues
                     </a>
                   </li>
                   <li>
                     <a href={REPO_CONTRIBUTORS} {...ext}>
-                      {home.footer.connectLinks[2]}
+                      Contributors
                     </a>
                   </li>
                   <li>
                     <a href={REPO_RELEASES} {...ext}>
-                      {home.footer.connectLinks[3]}
-                    </a>
-                  </li>
-                  <li>
-                    <a href={DISCORD} {...ext}>
-                      {home.footer.connectLinks[4]}
+                      Releases
                     </a>
                   </li>
                 </ul>
               </div>
               <div className='foot-col'>
-                <h5>{home.footer.columns.openDesign}</h5>
+                <h5>Docs</h5>
                 <ul>
                   <li>
-                    <a href={href('/official/')}>
-                      {home.footer.openDesignLinks.official}
+                    <a href={REPO_DOCS('QUICKSTART.md')} {...ext}>
+                      Quickstart
                     </a>
                   </li>
                   <li>
-                    <a href={href('/quickstart/')}>
-                      {home.footer.openDesignLinks.quickstart}
+                    <a href={REPO_DOCS('docs/architecture.md')} {...ext}>
+                      Architecture
                     </a>
                   </li>
                   <li>
-                    <a href={href('/agents/')}>
-                      {home.footer.openDesignLinks.agents}
+                    <a href={REPO_DOCS('docs/skills-protocol.md')} {...ext}>
+                      Skill Protocol
                     </a>
                   </li>
                   <li>
-                    <a href={href('/compare/')}>
-                      {home.footer.openDesignLinks.compare}
-                    </a>
-                  </li>
-                  <li>
-                    <a href={href('/alternatives/claude-design/')}>
-                      {home.footer.openDesignLinks.alternative}
+                    <a href={REPO_DOCS('docs/roadmap.md')} {...ext}>
+                      Roadmap
                     </a>
                   </li>
                 </ul>
@@ -1422,27 +1191,18 @@ export default function Page({
             <div className='foot-bottom'>
               <span>
                 <span className='pulse' />●{' '}
-                <b style={{ color: 'var(--ink)' }}>{home.footer.bottomLeft}</b>
+                <b style={{ color: 'var(--ink)' }}>JT Design</b> · Apache-2.0
+                · 2026 / Volume 01 / Issue Nº 26
               </span>
               <span className='right'>
-                <span>{home.footer.bottomRightA}</span>
-                <span>{home.footer.bottomRightB}</span>
+                <span>Berlin / Open / Earth</span>
+                <span>52.5200° N · 13.4050° E</span>
                 <span style={{ color: 'var(--coral)' }}>♥ MMXXVI</span>
               </span>
             </div>
             <div className='foot-mega'>
               <div className='word' data-reveal='rise-lg'>
-                {(() => {
-                  const parts = home.footer.mega.split('Design');
-                  if (parts.length !== 2) return home.footer.mega;
-                  return (
-                    <>
-                      {parts[0]}
-                      <span style={{ color: 'var(--coral)' }}>Design</span>
-                      {parts[1]}
-                    </>
-                  );
-                })()}
+                Open <em>Design</em>.
               </div>
             </div>
           </div>
