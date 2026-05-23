@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultCritiqueConfig } from '@jt-design/contracts/critique';
+import { defaultCritiqueConfig } from '@open-design/contracts/critique';
 import { loadCritiqueConfigFromEnv } from '../src/critique/config.js';
 
 describe('loadCritiqueConfigFromEnv', () => {

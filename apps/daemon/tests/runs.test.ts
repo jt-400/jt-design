@@ -4,6 +4,45 @@ import { describe, expect, it, vi } from 'vitest';
 import { createChatRunService } from '../src/runs.js';
 
 describe('chat run service shutdown', () => {
+  it('retains structured error details on failed run status bodies', async () => {
+    const runs = createRuns();
+    const run = runs.create({ projectId: 'project-1', conversationId: 'conv-1' });
+
+    const wait = runs.wait(run);
+    runs.emit(run, 'error', {
+      message: 'Agent stalled without emitting any new output for 1s.',
+      error: {
+        code: 'AGENT_EXECUTION_FAILED',
+        message: 'Agent stalled without emitting any new output for 1s.',
+        retryable: true,
+      },
+    });
+    runs.finish(run, 'failed', 1, null);
+
+    expect(runs.statusBody(run)).toMatchObject({
+      status: 'failed',
+      errorCode: 'AGENT_EXECUTION_FAILED',
+      error: 'Agent stalled without emitting any new output for 1s.',
+    });
+    await expect(wait).resolves.toMatchObject({
+      status: 'failed',
+      errorCode: 'AGENT_EXECUTION_FAILED',
+      error: 'Agent stalled without emitting any new output for 1s.',
+    });
+  });
+
+  it('filters active runs by conversation within the same project', () => {
+    const runs = createRuns();
+    const runA = runs.create({ projectId: 'project-1', conversationId: 'conv-a' });
+    const runB = runs.create({ projectId: 'project-1', conversationId: 'conv-b' });
+    runA.status = 'running';
+    runB.status = 'running';
+
+    expect(
+      runs.list({ projectId: 'project-1', conversationId: 'conv-b', status: 'active' }),
+    ).toEqual([runB]);
+  });
+
   it('cancels active runs and terminates their child process during daemon shutdown', async () => {
     const runs = createRuns();
     const child = new FakeChildProcess({ closeOn: 'SIGTERM' });
@@ -52,6 +91,77 @@ describe('chat run service shutdown', () => {
     expect(abort).toHaveBeenCalledTimes(1);
     expect(child.signals).toEqual(['SIGTERM']);
     expect(run.status).toBe('canceled');
+  });
+});
+
+describe('chat run service stream replay', () => {
+  it('always replays the final event when a reattaching client cursor is at the end of a terminal run', () => {
+    const sendCalls: Array<{ event: string; data: unknown; id: number }> = [];
+    const endCalls: number[] = [];
+    const runs = createChatRunService({
+      createSseResponse: () => ({
+        send: vi.fn((event: string, data: unknown, id: number) => {
+          sendCalls.push({ event, data, id });
+          return true;
+        }),
+        end: vi.fn(() => endCalls.push(1)),
+        cleanup: vi.fn(),
+      }),
+      createSseErrorPayload: (code: string, message: string) => ({ error: { code, message } }),
+      shutdownGraceMs: 10,
+      ttlMs: 60_000,
+    });
+
+    const run = runs.create({ projectId: 'p', conversationId: 'c' }) as any;
+    runs.emit(run, 'stdout', { text: 'hello' });
+    runs.finish(run, 'succeeded', 0, null);
+
+    const finalEventId = run.events.at(-1).id;
+    const fakeReq = {
+      get: () => null,
+      query: { after: String(finalEventId) },
+    } as never;
+    const fakeRes = { on: () => {} } as never;
+
+    sendCalls.length = 0;
+    runs.stream(run, fakeReq, fakeRes);
+
+    expect(sendCalls.length).toBeGreaterThanOrEqual(1);
+    expect(sendCalls.at(-1)?.event).toBe('end');
+    expect(endCalls.length).toBe(1);
+  });
+
+  it('does not duplicate events when the cursor sits before the final event', () => {
+    const sendCalls: Array<{ event: string; data: unknown; id: number }> = [];
+    const runs = createChatRunService({
+      createSseResponse: () => ({
+        send: vi.fn((event: string, data: unknown, id: number) => {
+          sendCalls.push({ event, data, id });
+          return true;
+        }),
+        end: vi.fn(),
+        cleanup: vi.fn(),
+      }),
+      createSseErrorPayload: (code: string, message: string) => ({ error: { code, message } }),
+      shutdownGraceMs: 10,
+      ttlMs: 60_000,
+    });
+
+    const run = runs.create() as any;
+    runs.emit(run, 'stdout', { text: 'a' });
+    runs.emit(run, 'stdout', { text: 'b' });
+    runs.finish(run, 'succeeded', 0, null);
+
+    const cursor = run.events[0].id;
+    runs.stream(
+      run,
+      { get: () => null, query: { after: String(cursor) } } as never,
+      { on: () => {} } as never,
+    );
+
+    expect(sendCalls.map((c) => c.id)).toEqual(
+      run.events.filter((e: { id: number }) => e.id > cursor).map((e: { id: number }) => e.id),
+    );
   });
 });
 

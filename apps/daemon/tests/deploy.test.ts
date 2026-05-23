@@ -1480,7 +1480,7 @@ describe('cloudflare pages deploys', () => {
   it('round-trips typed Cloudflare info while keeping provider metadata internal', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'od-deployment-db-test-'));
     try {
-      const db = openDatabase(root, { dataDir: path.join(root, '.jtd') });
+      const db = openDatabase(root, { dataDir: path.join(root, '.od') });
       insertProject(db, {
         id: 'project-1',
         name: 'Project 1',

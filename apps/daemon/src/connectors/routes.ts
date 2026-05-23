@@ -2,11 +2,12 @@ import net from 'node:net';
 
 import type { Express, Request, RequestHandler, Response } from 'express';
 
-import type { ToolTokenGrant } from '../tool-tokens.js';
+import { checkConnectorAccess, type ToolTokenGrant } from '../tool-tokens.js';
 import { validateBoundedJsonObject } from '../live-artifacts/schema.js';
 import { executeConnectorTool, listConnectorTools } from '../tools/connectors.js';
+import { readComposioConfig, readPublicComposioConfig, writeComposioConfig } from './composio-config.js';
 import type { ConnectorToolUseCase } from './catalog.js';
-import { connectorService, ConnectorService, ConnectorServiceError } from './service.js';
+import { connectorService, ConnectorService, ConnectorServiceError, deleteConnectorCredentialsByProvider } from './service.js';
 
 type ConnectorApiErrorCode =
   | 'BAD_REQUEST'
@@ -14,6 +15,7 @@ type ConnectorApiErrorCode =
   | 'VALIDATION_FAILED'
   | 'CONNECTOR_NOT_FOUND'
   | 'CONNECTOR_NOT_CONNECTED'
+  | 'CONNECTOR_NOT_GRANTED'
   | 'CONNECTOR_DISABLED'
   | 'CONNECTOR_TOOL_NOT_FOUND'
   | 'CONNECTOR_SAFETY_DENIED'
@@ -53,6 +55,9 @@ export interface RegisterConnectorRoutesOptions {
   projectsRoot?: string;
   authorizeToolRequest?: (req: Request, res: Response, operation: string) => ToolTokenGrant | null;
   requireLocalDaemonRequest?: RequestHandler;
+  composio?: {
+    clearDiscoveryCache: () => void;
+  };
 }
 
 function sendConnectorRouteError(res: Response, err: unknown, sendApiError: ConnectorApiErrorSender): Response {
@@ -287,7 +292,7 @@ function renderConnectorConnectedHtml(connectorId: string): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${connectorLabelHtml} connected · JT Design</title>
+    <title>${connectorLabelHtml} connected · Open Design</title>
     <style>
       :root {
         --bg: #faf9f7;
@@ -440,9 +445,9 @@ function renderConnectorConnectedHtml(connectorId: string): string {
   </head>
   <body>
     <main aria-labelledby="callback-title">
-      <div class="chrome" aria-label="JT Design">
+      <div class="chrome" aria-label="Open Design">
         <span class="brand-mark" aria-hidden="true">OD</span>
-        <span class="brand-title">JT Design</span>
+        <span class="brand-title">Open Design</span>
       </div>
       <section class="content">
         <div class="status-icon" aria-hidden="true">
@@ -452,7 +457,7 @@ function renderConnectorConnectedHtml(connectorId: string): string {
         </div>
         <div>
           <h1 id="callback-title">${connectorLabelHtml} connected</h1>
-          <p>Your connector is ready to use in JT Design.</p>
+          <p>Your connector is ready to use in Open Design.</p>
         </div>
         <div class="summary" role="status">
           <span class="summary-label">
@@ -469,12 +474,12 @@ function renderConnectorConnectedHtml(connectorId: string): string {
       (() => {
         const connectorId = ${connectorIdJson};
         const connectorLabel = ${connectorLabelJson};
-        const message = { type: 'jt-design:connector-connected', connectorId, connectorLabel };
+        const message = { type: 'open-design:connector-connected', connectorId, connectorLabel };
         const closeButton = document.getElementById('close-window');
         const hint = document.getElementById('auto-close-hint');
         function showManualCloseHint() {
           closeButton.textContent = 'Close this tab manually';
-          hint.textContent = 'Your browser blocked automatic closing. You can close this tab and return to JT Design.';
+          hint.textContent = 'Your browser blocked automatic closing. You can close this tab and return to Open Design.';
         }
         function hasLiveOpener() {
           try {
@@ -507,10 +512,10 @@ function renderConnectorConnectedHtml(connectorId: string): string {
             window.opener.postMessage(message, '*');
             window.setTimeout(requestClose, 900);
           } else {
-            hint.textContent = 'You can close this tab and return to JT Design.';
+            hint.textContent = 'You can close this tab and return to Open Design.';
           }
         } catch {
-          hint.textContent = 'You can close this tab and return to JT Design.';
+          hint.textContent = 'You can close this tab and return to Open Design.';
         }
         closeButton.addEventListener('click', requestClose);
       })();
@@ -558,6 +563,29 @@ export function registerConnectorRoutes(app: Express, options: RegisterConnector
       await proxyComposioLogo(req, res);
     } catch (err) {
       sendConnectorRouteError(res, err, options.sendApiError);
+    }
+  });
+
+  app.get('/api/connectors/composio/config', (_req: Request, res: Response) => {
+    try {
+      res.json(readPublicComposioConfig());
+    } catch (err) {
+      res.status(500).json({ error: String(err instanceof Error ? err.message : err) });
+    }
+  });
+
+  app.put('/api/connectors/composio/config', requireLocalDaemonRequest, (req: Request, res: Response) => {
+    try {
+      const before = readComposioConfig();
+      const cfg = writeComposioConfig(req.body);
+      const after = readComposioConfig();
+      options.composio?.clearDiscoveryCache();
+      if (!cfg.configured || (before.apiKey && before.apiKey !== after.apiKey)) {
+        deleteConnectorCredentialsByProvider('composio');
+      }
+      res.json(cfg);
+    } catch (err) {
+      res.status(400).json({ error: String(err instanceof Error ? err.message : err) });
     }
   });
 
@@ -729,6 +757,18 @@ export function registerConnectorRoutes(app: Express, options: RegisterConnector
       }
       if (typeof toolName !== 'string' || toolName.length === 0) {
         options.sendApiError(res, 400, 'BAD_REQUEST', 'toolName is required');
+        return;
+      }
+
+      // Plan §3.A3 / spec §9: re-validate the plugin connector capability
+      // gate on every call so a token replacement attack never bypasses
+      // the §5.3 rule. When the grant has no plugin context the gate is
+      // a no-op.
+      const connectorGate = checkConnectorAccess(grant, connectorId);
+      if (!connectorGate.ok) {
+        options.sendApiError(res, 403, 'CONNECTOR_NOT_GRANTED', connectorGate.reason, {
+          details: { connectorId },
+        });
         return;
       }
       const inputValidation = validateBoundedJsonObject(input ?? {}, 'input');

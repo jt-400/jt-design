@@ -39,7 +39,7 @@ describe('resolveStandaloneServerEntry', () => {
   it('resolves the traced monorepo standalone server entry', async () => {
     const previousDistDir = process.env.OD_WEB_DIST_DIR;
     delete process.env.OD_WEB_DIST_DIR;
-    const webRoot = await mkdtemp(join(tmpdir(), 'jt-design-web-standalone-'));
+    const webRoot = await mkdtemp(join(tmpdir(), 'open-design-web-standalone-'));
     const nestedRoot = join(webRoot, '.next', 'standalone', 'apps', 'web');
     const fallbackRoot = join(webRoot, '.next', 'standalone');
 
@@ -63,8 +63,8 @@ describe('resolveStandaloneServerEntry', () => {
   it('prefers a copied standalone resource root before package fallback entries', async () => {
     const previousDistDir = process.env.OD_WEB_DIST_DIR;
     delete process.env.OD_WEB_DIST_DIR;
-    const webRoot = await mkdtemp(join(tmpdir(), 'jt-design-web-package-'));
-    const copiedRoot = await mkdtemp(join(tmpdir(), 'jt-design-web-copied-'));
+    const webRoot = await mkdtemp(join(tmpdir(), 'open-design-web-package-'));
+    const copiedRoot = await mkdtemp(join(tmpdir(), 'open-design-web-copied-'));
     const copiedWebRoot = join(copiedRoot, 'apps', 'web');
     const packageFallbackRoot = join(webRoot, '.next', 'standalone', 'apps', 'web');
 
@@ -87,7 +87,7 @@ describe('resolveStandaloneServerEntry', () => {
   });
 
   it('can resolve a copied standalone resource without a web package root', async () => {
-    const copiedRoot = await mkdtemp(join(tmpdir(), 'jt-design-web-copied-only-'));
+    const copiedRoot = await mkdtemp(join(tmpdir(), 'open-design-web-copied-only-'));
     const copiedWebRoot = join(copiedRoot, 'apps', 'web');
 
     try {
@@ -103,12 +103,12 @@ describe('resolveStandaloneServerEntry', () => {
 
 describe('createStandaloneServerArgs', () => {
   it('preloads a parent monitor before running the standalone server entry', () => {
-    const args = createStandaloneServerArgs('/tmp/jt-design/server.js');
+    const args = createStandaloneServerArgs('/tmp/open-design/server.js');
 
     expect(args).toHaveLength(3);
     expect(args[0]).toBe('--import');
     expect(args[1]).toBe(createStandaloneParentMonitorImport());
-    expect(args[2]).toBe('/tmp/jt-design/server.js');
+    expect(args[2]).toBe('/tmp/open-design/server.js');
   });
 
   it('uses a data import that exits when the recorded parent disappears', () => {
@@ -158,6 +158,46 @@ describe('normalizeDaemonProxyOriginHeader', () => {
         webPort: 3000,
       }),
     ).toBe('http://127.0.0.1:7456');
+  });
+
+  it('normalizes matching private LAN browser origins to the daemon origin', () => {
+    expect(
+      normalizeDaemonProxyOriginHeader({
+        daemonOrigin: 'http://127.0.0.1:7456',
+        origin: 'http://192.168.3.23:8085',
+        requestHost: '192.168.3.23:8085',
+        webPort: 8085,
+      }),
+    ).toBe('http://127.0.0.1:7456');
+  });
+
+  it('does not normalize mismatched private LAN origins', () => {
+    expect(
+      normalizeDaemonProxyOriginHeader({
+        daemonOrigin: 'http://127.0.0.1:7456',
+        origin: 'http://192.168.3.23:8085',
+        requestHost: '192.168.3.24:8085',
+        webPort: 8085,
+      }),
+    ).toBe('http://192.168.3.23:8085');
+  });
+
+  it('normalizes matching wildcard configured dev origins to the daemon origin', () => {
+    const previous = process.env.OD_ALLOWED_DEV_ORIGINS;
+    process.env.OD_ALLOWED_DEV_ORIGINS = '*.local-origin.dev';
+    try {
+      expect(
+        normalizeDaemonProxyOriginHeader({
+          daemonOrigin: 'http://127.0.0.1:7456',
+          origin: 'http://app.local-origin.dev:8085',
+          requestHost: 'app.local-origin.dev:8085',
+          webPort: 8085,
+        }),
+      ).toBe('http://127.0.0.1:7456');
+    } finally {
+      if (previous == null) delete process.env.OD_ALLOWED_DEV_ORIGINS;
+      else process.env.OD_ALLOWED_DEV_ORIGINS = previous;
+    }
   });
 
   it('does not rewrite unrelated browser origins', () => {

@@ -33,8 +33,8 @@ describe('resolveDataDir', () => {
   });
 
   it('returns <projectRoot>/.od when OD_DATA_DIR is unset', () => {
-    expect(resolveDataDir(undefined, projectRoot)).toBe(path.join(projectRoot, '.jtd'));
-    expect(resolveDataDir('', projectRoot)).toBe(path.join(projectRoot, '.jtd'));
+    expect(resolveDataDir(undefined, projectRoot)).toBe(path.join(projectRoot, '.od'));
+    expect(resolveDataDir('', projectRoot)).toBe(path.join(projectRoot, '.od'));
   });
 
   it('expands a leading ~/ against the user home directory', () => {

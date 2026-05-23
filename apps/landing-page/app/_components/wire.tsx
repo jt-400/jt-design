@@ -6,7 +6,7 @@
  * `app/pages/index.astro` enhances it with a tiny inline GitHub fetch so
  * the browser never downloads React.
  *
- *   GET https://api.github.com/repos/tuatahi.art/contributors
+ *   GET https://api.github.com/repos/nexu-io/open-design/contributors
  *
  * Each entry becomes a `<a class='wire-item is-link'>` linking straight
  * to the contributor's GitHub profile. We:
@@ -22,7 +22,7 @@
  * fallback list stays visible — the section never goes empty.
  */
 
-const REPO = 'https://github.com/tuatahi.art';
+const REPO = 'https://github.com/nexu-io/open-design';
 const REPO_CONTRIBUTORS_PAGE = `${REPO}/graphs/contributors`;
 
 const ext = {
@@ -44,7 +44,7 @@ type Contributor = {
 
 // SSR-safe initial list. Used until the GitHub fetch resolves AND as
 // the permanent fallback when the network is unavailable. Mirrors the
-// canonical wire row in `skills/open-design-landing/example.html` so
+// canonical wire row in `design-templates/open-design-landing/example.html` so
 // hydration is byte-stable against the static reference rendering.
 const FALLBACK: ReadonlyArray<Contributor> = [
   { handle: 'tw93', role: 'kami', href: 'https://github.com/tw93' },

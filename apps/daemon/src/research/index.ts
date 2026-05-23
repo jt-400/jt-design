@@ -2,7 +2,7 @@ import type {
   ResearchDepth,
   ResearchFindings,
   ResearchSource,
-} from '@jt-design/contracts/api/research';
+} from '@open-design/contracts/api/research';
 import { resolveProviderConfig } from '../media-config.js';
 import { tavilySearch, TavilyError } from './tavily.js';
 
