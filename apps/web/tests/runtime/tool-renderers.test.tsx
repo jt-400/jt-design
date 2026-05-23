@@ -33,12 +33,8 @@ describe('deriveToolStatus', () => {
     expect(deriveToolStatus(undefined, true)).toBe('executing');
   });
 
-  it('returns "complete" when a successful run finished without a tool result', () => {
-    expect(deriveToolStatus(undefined, false, true)).toBe('complete');
-  });
-
-  it('returns "error" when a failed or canceled run finished without a tool result', () => {
-    expect(deriveToolStatus(undefined, false, false)).toBe('error');
+  it('returns "inProgress" when the run died before the tool returned', () => {
+    expect(deriveToolStatus(undefined, false)).toBe('inProgress');
   });
 
   it('returns "complete" on a clean tool result', () => {
@@ -69,13 +65,6 @@ describe('toRenderProps', () => {
     expect(props.status).toBe('executing');
     expect(props.result).toBeUndefined();
     expect(props.isError).toBe(false);
-  });
-
-  it('marks missing results complete only for successful terminal runs', () => {
-    const u = use({ city: 'SF' }, 'get_weather');
-
-    expect(toRenderProps(u, undefined, false, true).status).toBe('complete');
-    expect(toRenderProps(u, undefined, false, false).status).toBe('error');
   });
 });
 

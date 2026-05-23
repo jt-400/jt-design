@@ -11,7 +11,7 @@ function resolveToolsPackRoot(startDir: string): string {
     try {
       const raw = readFileSync(join(current, "package.json"), "utf8");
       const parsed = JSON.parse(raw) as { name?: unknown };
-      if (parsed.name === "@open-design/tools-pack") {
+      if (parsed.name === "@jt-design/tools-pack") {
         return current;
       }
     } catch {
@@ -52,15 +52,8 @@ export const linuxResources = {
 
 const BUNDLED_RESOURCE_TREES = [
   { from: "skills", to: "skills" },
-  // After the skills/design-templates split (specs/current/skills-and-design-templates.md)
-  // the rendering catalogue lives under its own root and the daemon
-  // resolves it via DESIGN_TEMPLATES_DIR. Bundle it like any other
-  // first-class resource so packaged builds carry the full template set.
-  { from: "design-templates", to: "design-templates" },
   { from: "design-systems", to: "design-systems" },
   { from: "craft", to: "craft" },
-  { from: join("plugins", "_official"), to: join("plugins", "_official") },
-  { from: join("plugins", "registry"), to: join("plugins", "registry") },
   { from: join("assets", "frames"), to: "frames" },
   { from: join("assets", "community-pets"), to: "community-pets" },
   { from: "prompt-templates", to: "prompt-templates" },

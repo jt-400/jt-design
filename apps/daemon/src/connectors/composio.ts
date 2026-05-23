@@ -17,16 +17,6 @@ const DISCOVERY_CACHE_TTL_MS = 60_000;
 const CUSTOM_AUTH_REQUIRED_MESSAGE = 'Composio does not have managed credentials for this toolkit.';
 const PERSISTED_CATALOG_REFRESH_MS = 24 * 60 * 60 * 1000;
 
-const COMPOSIO_READ_ONLY_TOOL_SAFETY_OVERRIDES = new Set([
-  'notion:notion_search_notion_page',
-]);
-
-const COMPOSIO_READ_ONLY_TOOL_SAFETY = {
-  sideEffect: 'read',
-  approval: 'auto',
-  reason: 'Provider-specific override: this Composio tool is a read-only search/list operation.',
-} as const;
-
 interface ComposioToolkitCatalogEntry {
   name: string;
   slug: string;
@@ -40,7 +30,7 @@ interface PersistedComposioCatalogCache {
   definitions: ConnectorCatalogDefinition[];
 }
 
-let composioCatalogCacheFilePath = path.join(process.cwd(), '.od', 'connectors', 'composio-catalog-cache.json');
+let composioCatalogCacheFilePath = path.join(process.cwd(), '.jtd', 'connectors', 'composio-catalog-cache.json');
 
 const FEATURED_COMPOSIO_CATALOG: ConnectorCatalogDefinition[] = [
   {
@@ -1373,17 +1363,17 @@ function isGenericComposioDescription(description: string): boolean {
 
 function fallbackComposioDescription(name: string, category: string | undefined): string {
   const normalizedCategory = category?.trim().toLowerCase();
-  if (normalizedCategory?.includes('project')) return `Coordinate ${name} projects, tasks, and workflow data inside Open Design.`;
-  if (normalizedCategory?.includes('communication')) return `Bring ${name} conversations, channels, and collaboration context into Open Design.`;
-  if (normalizedCategory?.includes('documentation')) return `Search and reuse ${name} knowledge, pages, and documentation in Open Design.`;
-  if (normalizedCategory?.includes('storage')) return `Find and reference ${name} files, folders, and document metadata from Open Design.`;
-  if (normalizedCategory?.includes('developer')) return `Inspect ${name} developer resources, activity, and operational context from Open Design.`;
-  if (normalizedCategory?.includes('crm') || normalizedCategory?.includes('sales')) return `Use ${name} customer, deal, and account context in Open Design artifacts.`;
-  if (normalizedCategory?.includes('marketing')) return `Analyze ${name} campaigns, audiences, and marketing activity from Open Design.`;
-  if (normalizedCategory?.includes('finance') || normalizedCategory?.includes('commerce')) return `Work with ${name} business, billing, and transaction data in Open Design.`;
-  if (normalizedCategory?.includes('observability')) return `Surface ${name} incidents, metrics, and operational signals in Open Design.`;
-  if (normalizedCategory?.includes('data')) return `Query ${name} datasets and platform metadata for data-backed Open Design artifacts.`;
-  return `Use ${name} tools and data directly from Open Design.`;
+  if (normalizedCategory?.includes('project')) return `Coordinate ${name} projects, tasks, and workflow data inside JT Design.`;
+  if (normalizedCategory?.includes('communication')) return `Bring ${name} conversations, channels, and collaboration context into JT Design.`;
+  if (normalizedCategory?.includes('documentation')) return `Search and reuse ${name} knowledge, pages, and documentation in JT Design.`;
+  if (normalizedCategory?.includes('storage')) return `Find and reference ${name} files, folders, and document metadata from JT Design.`;
+  if (normalizedCategory?.includes('developer')) return `Inspect ${name} developer resources, activity, and operational context from JT Design.`;
+  if (normalizedCategory?.includes('crm') || normalizedCategory?.includes('sales')) return `Use ${name} customer, deal, and account context in JT Design artifacts.`;
+  if (normalizedCategory?.includes('marketing')) return `Analyze ${name} campaigns, audiences, and marketing activity from JT Design.`;
+  if (normalizedCategory?.includes('finance') || normalizedCategory?.includes('commerce')) return `Work with ${name} business, billing, and transaction data in JT Design.`;
+  if (normalizedCategory?.includes('observability')) return `Surface ${name} incidents, metrics, and operational signals in JT Design.`;
+  if (normalizedCategory?.includes('data')) return `Query ${name} datasets and platform metadata for data-backed JT Design artifacts.`;
+  return `Use ${name} tools and data directly from JT Design.`;
 }
 
 function getComposioAuthConfigId(response: ComposioAuthConfigResponse): string | undefined {
@@ -1431,19 +1421,7 @@ function applyComposioToolCuration(
   const overlay = COMPOSIO_CURATION_OVERLAY[connectorKey];
   const toolKey = providerToolId ? normalizeProviderToolId(providerToolId) : undefined;
   const curation = toolKey ? overlay?.[toolKey] : undefined;
-  const safetyOverride = toolKey
-    ? COMPOSIO_READ_ONLY_TOOL_SAFETY_OVERRIDES.has(`${connectorKey}:${toolKey}`)
-    : false;
-  const curated = curation === undefined
-    ? tool
-    : { ...tool, curation: { ...(tool.curation ?? {}), ...curation } };
-  return safetyOverride
-    ? {
-        ...curated,
-        safety: { ...COMPOSIO_READ_ONLY_TOOL_SAFETY },
-        refreshEligible: true,
-      }
-    : curated;
+  return curation === undefined ? tool : { ...tool, curation: { ...(tool.curation ?? {}), ...curation } };
 }
 
 function titleFromSlug(value: string): string {

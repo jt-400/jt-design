@@ -13,15 +13,9 @@ export class PackagedPathAccessError extends Error {
   constructor(message: string, options?: { cause?: unknown; title?: string }) {
     super(message, options);
     this.name = "PackagedPathAccessError";
-    this.title = options?.title ?? "Open Design cannot access its data folder";
+    this.title = options?.title ?? "JT Design cannot access its data folder";
   }
 }
-
-export type PackagedSingleInstanceApp = {
-  on: (event: "second-instance", listener: () => void) => unknown;
-  quit: () => void;
-  requestSingleInstanceLock: () => boolean;
-};
 
 type PathDiagnostic = {
   exists: boolean;
@@ -54,7 +48,7 @@ function formatWritablePathError(options: {
   const message = error instanceof Error ? error.message : String(error);
   const parentPath = dirname(attemptedPath);
   const diagLines = [
-    `Open Design could not create or write to:`,
+    `JT Design could not create or write to:`,
     attemptedPath,
     "",
     `Current user: ${currentUser}`,
@@ -110,7 +104,6 @@ export async function ensurePackagedNamespacePaths(
     mkdir(paths.logsRoot, { recursive: true }),
     mkdir(paths.desktopLogsRoot, { recursive: true }),
     mkdir(paths.runtimeRoot, { recursive: true }),
-    mkdir(paths.updateRoot, { recursive: true }),
     mkdir(paths.electronUserDataRoot, { recursive: true }),
     mkdir(paths.electronSessionDataRoot, { recursive: true }),
   ]);
@@ -122,18 +115,4 @@ export function applyPackagedElectronPathOverrides(
   app.setPath("userData", paths.electronUserDataRoot);
   app.setPath("sessionData", paths.electronSessionDataRoot);
   app.setPath("logs", paths.desktopLogsRoot);
-}
-
-export function claimPackagedSingleInstanceLock(
-  electronApp: PackagedSingleInstanceApp,
-  onSecondInstance: () => void,
-): boolean {
-  if (!electronApp.requestSingleInstanceLock()) {
-    electronApp.quit();
-    return false;
-  }
-  electronApp.on("second-instance", () => {
-    onSecondInstance();
-  });
-  return true;
 }

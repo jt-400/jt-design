@@ -28,7 +28,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(here, '../../..');
 const serverRuntimeDataRoot = process.env.OD_DATA_DIR
   ? path.resolve(projectRoot, process.env.OD_DATA_DIR)
-  : path.join(projectRoot, '.od');
+  : path.join(projectRoot, '.jtd');
 
 let server: http.Server | undefined;
 let baseUrl: string;

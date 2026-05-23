@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 
-import { removeFile, writeJsonFile } from "@open-design/sidecar";
-import type { SidecarStamp } from "@open-design/sidecar-proto";
+import { removeFile, writeJsonFile } from "@jt-design/sidecar";
+import type { SidecarStamp } from "@jt-design/sidecar-proto";
 
 import type { PackagedNamespacePaths } from "./paths.js";
 
@@ -57,16 +57,14 @@ function createPackagedDesktopRootIdentity(options: {
 }
 
 export async function writePackagedDesktopIdentity(options: {
-  identityPath?: string;
   paths: PackagedNamespacePaths;
   stamp: SidecarStamp;
 }): Promise<PackagedDesktopIdentityHandle> {
   const identity = createPackagedDesktopRootIdentity(options);
-  const identityPath = options.identityPath ?? options.paths.desktopIdentityPath;
 
   const writeIdentity = async () => {
     identity.updatedAt = new Date().toISOString();
-    await writeJsonFile(identityPath, identity);
+    await writeJsonFile(options.paths.desktopIdentityPath, identity);
   };
 
   await writeIdentity();
@@ -78,7 +76,7 @@ export async function writePackagedDesktopIdentity(options: {
   return {
     async close() {
       clearInterval(heartbeat);
-      await removeFile(identityPath).catch(() => undefined);
+      await removeFile(options.paths.desktopIdentityPath).catch(() => undefined);
     },
     identity,
   };

@@ -8,11 +8,7 @@ vi.mock("electron", () => ({
   app: {},
 }));
 
-import {
-  PackagedPathAccessError,
-  claimPackagedSingleInstanceLock,
-  verifyPackagedDataRootWritable,
-} from "../src/launch.js";
+import { PackagedPathAccessError, verifyPackagedDataRootWritable } from "../src/launch.js";
 
 describe("verifyPackagedDataRootWritable", () => {
   it("accepts a writable dataRoot", async () => {
@@ -40,7 +36,7 @@ describe("verifyPackagedDataRootWritable", () => {
       }
 
       expect(captured).toBeInstanceOf(PackagedPathAccessError);
-      expect((captured as Error).message).toContain("Open Design could not create or write to:");
+      expect((captured as Error).message).toContain("JT Design could not create or write to:");
       expect((captured as Error).message).toContain(join(blocker, "data"));
       expect((captured as Error).message).toContain("Current user:");
       expect((captured as Error).message).toContain("Try in Terminal:");
@@ -48,42 +44,5 @@ describe("verifyPackagedDataRootWritable", () => {
     } finally {
       rmSync(root, { force: true, recursive: true });
     }
-  });
-});
-
-describe("claimPackagedSingleInstanceLock", () => {
-  it("registers a second-instance focus callback when the lock is acquired", () => {
-    const listeners = new Map<string, () => void>();
-    const app = {
-      on: vi.fn((event: string, listener: () => void) => {
-        listeners.set(event, listener);
-        return app;
-      }),
-      quit: vi.fn(),
-      requestSingleInstanceLock: vi.fn(() => true),
-    };
-    const focusExisting = vi.fn();
-
-    expect(claimPackagedSingleInstanceLock(app, focusExisting)).toBe(true);
-    listeners.get("second-instance")?.();
-
-    expect(app.requestSingleInstanceLock).toHaveBeenCalledTimes(1);
-    expect(app.on).toHaveBeenCalledWith("second-instance", expect.any(Function));
-    expect(app.quit).not.toHaveBeenCalled();
-    expect(focusExisting).toHaveBeenCalledTimes(1);
-  });
-
-  it("quits the duplicate process before packaged sidecars start when the lock is held", () => {
-    const app = {
-      on: vi.fn(),
-      quit: vi.fn(),
-      requestSingleInstanceLock: vi.fn(() => false),
-    };
-
-    expect(claimPackagedSingleInstanceLock(app, vi.fn())).toBe(false);
-
-    expect(app.requestSingleInstanceLock).toHaveBeenCalledTimes(1);
-    expect(app.quit).toHaveBeenCalledTimes(1);
-    expect(app.on).not.toHaveBeenCalled();
   });
 });

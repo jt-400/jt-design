@@ -12,10 +12,10 @@ import {
   SIDECAR_SOURCES,
   normalizeDesktopSidecarMessage,
   type SidecarStamp,
-} from "@open-design/sidecar-proto";
-import { bootstrapSidecarRuntime, createJsonIpcServer, resolveAppIpcPath } from "@open-design/sidecar";
+} from "@jt-design/sidecar-proto";
+import { bootstrapSidecarRuntime, createJsonIpcServer, resolveAppIpcPath } from "@jt-design/sidecar";
 
-import { PACKAGED_NAMESPACE_ENV, type PackagedConfig } from "./config.js";
+import type { PackagedConfig } from "./config.js";
 import { writePackagedDesktopIdentity, writePackagedWebIdentity } from "./identity.js";
 import { resolvePackagedNamespacePaths } from "./paths.js";
 import { startPackagedSidecars } from "./sidecars.js";
@@ -32,23 +32,25 @@ function resolveHeadlessNamespaceBaseRoot(): string {
     xdgDataHome != null && xdgDataHome.length > 0
       ? xdgDataHome
       : join(homedir(), ".local", "share");
-  return join(dataBase, "open-design", "namespaces");
+  return join(dataBase, "jt-design", "namespaces");
 }
 
 function resolveHeadlessConfig(): PackagedConfig {
   const namespace =
     OPEN_DESIGN_SIDECAR_CONTRACT.normalizeNamespace(
-      process.env[PACKAGED_NAMESPACE_ENV] ?? SIDECAR_DEFAULTS.namespace,
+      process.env.OD_NAMESPACE ??
+      process.env.OD_SIDECAR_NAMESPACE ??
+      SIDECAR_DEFAULTS.namespace,
     );
 
   const namespaceBaseRoot = resolveHeadlessNamespaceBaseRoot();
 
   // OD_RESOURCE_ROOT may be set by a launcher script; otherwise default to a
-  // sibling open-design/ directory relative to the node_modules that contain
+  // sibling jt-design/ directory relative to the node_modules that contain
   // this file — the layout written by tools-pack linux headless-install.
   const resourceRoot =
     process.env.OD_RESOURCE_ROOT ??
-    join(__dirname, "..", "..", "..", "open-design");
+    join(__dirname, "..", "..", "..", "jt-design");
 
   return {
     appVersion: null,
@@ -58,9 +60,6 @@ function resolveHeadlessConfig(): PackagedConfig {
     namespaceBaseRoot,
     nodeCommand: null,
     resourceRoot,
-    telemetryRelayUrl: process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL?.trim() || null,
-    posthogKey: process.env.POSTHOG_KEY?.trim() || null,
-    posthogHost: process.env.POSTHOG_HOST?.trim() || null,
     webSidecarEntry: null,
     webStandaloneRoot: null,
     webOutputMode: "server",
@@ -99,31 +98,15 @@ async function main(): Promise<void> {
     contract: OPEN_DESIGN_SIDECAR_CONTRACT,
   });
 
-  // Write a headless-specific identity marker so `tools-pack linux stop --headless`
-  // can find this process without confusing it for a menu-launched
-  // AppImage that owns desktop-root.json in the same namespace.
-  const identity = await writePackagedDesktopIdentity({
-    identityPath: paths.headlessIdentityPath,
-    paths,
-    stamp,
-  });
+  // Write the identity marker so `tools-pack linux stop` can find and stop
+  // this process by PID via the same mechanism as the Electron packaged path.
+  const identity = await writePackagedDesktopIdentity({ paths, stamp });
 
   const sidecars = await startPackagedSidecars(runtime, paths, {
     appVersion: config.appVersion,
     daemonCliEntry: config.daemonCliEntry,
     daemonSidecarEntry: config.daemonSidecarEntry,
     nodeCommand: config.nodeCommand,
-    telemetryRelayUrl: config.telemetryRelayUrl,
-    posthogKey: config.posthogKey,
-    posthogHost: config.posthogHost,
-    // PR #974 round-5 (lefarcen P2): headless packaged mode runs daemon
-    // + web only, no Electron, no privileged shell.openPath surface.
-    // Pinning OD_REQUIRE_DESKTOP_AUTH here would arm a gate no client
-    // can ever satisfy (no desktop main process to register a secret),
-    // so folder import would permanently return DESKTOP_AUTH_PENDING.
-    // The Electron entry counterpart in `apps/packaged/src/index.ts`
-    // passes `true` because it does start desktop main.
-    requireDesktopAuth: false,
     webSidecarEntry: config.webSidecarEntry,
     webStandaloneRoot: config.webStandaloneRoot,
     webOutputMode: config.webOutputMode,
@@ -137,7 +120,7 @@ async function main(): Promise<void> {
   }
 
   const shutdown = async (): Promise<void> => {
-    process.stdout.write("\n Shutting down Open Design...\n");
+    process.stdout.write("\n Shutting down JT Design...\n");
     await ipcServer.close().catch(() => undefined);
     await sidecars.close().catch(() => undefined);
     await identity.close().catch(() => undefined);
@@ -166,7 +149,7 @@ async function main(): Promise<void> {
     url: webUrl,
   });
 
-  process.stdout.write(`\n Open Design is running\n\n`);
+  process.stdout.write(`\n JT Design is running\n\n`);
   process.stdout.write(` ➜ ${colorize(webUrl)}\n\n`);
   process.stdout.write(` Press Ctrl+C to stop\n\n`);
 
@@ -180,7 +163,7 @@ async function main(): Promise<void> {
 
 void main().catch((error: unknown) => {
   process.stderr.write(
-    `open-design headless failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    `jt-design headless failed: ${error instanceof Error ? error.message : String(error)}\n`,
   );
   process.exit(1);
 });

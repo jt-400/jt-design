@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { closeHttpServer } from '../src/daemon-startup.js';
+import { closeHttpServer } from '../src/sidecar/server.js';
 
 describe('daemon sidecar HTTP shutdown', () => {
   let server: Server | null = null;

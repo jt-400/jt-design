@@ -2,9 +2,6 @@
 // schedule, mints a conversation (in either an existing project or a freshly
 // created one), and runs the configured prompt as an agent task.
 
-import type { AutomationSourceIngestionResponse } from './automations.js';
-import type { RunContextSelection } from './context.js';
-
 export type RoutineScheduleKind =
   | 'hourly'
   | 'daily'
@@ -84,8 +81,6 @@ export interface RoutineLastRunSummary {
   conversationId: string;
   agentRunId: string;
   summary?: string;
-  error?: string;
-  errorCode?: string;
 }
 
 export interface Routine {
@@ -96,7 +91,6 @@ export interface Routine {
   target: RoutineProjectTarget;
   skillId: string | null;
   agentId: string | null;
-  context?: RunContextSelection;
   enabled: boolean;
   nextRunAt: number | null;
   lastRun: RoutineLastRunSummary | null;
@@ -116,7 +110,6 @@ export interface RoutineRun {
   completedAt: number | null;
   summary: string | null;
   error: string | null;
-  errorCode: string | null;
 }
 
 export interface CreateRoutineRequest {
@@ -126,7 +119,6 @@ export interface CreateRoutineRequest {
   target: RoutineProjectTarget;
   skillId?: string | null;
   agentId?: string | null;
-  context?: RunContextSelection;
   enabled?: boolean;
 }
 
@@ -137,7 +129,6 @@ export interface UpdateRoutineRequest {
   target?: RoutineProjectTarget;
   skillId?: string | null;
   agentId?: string | null;
-  context?: RunContextSelection;
   enabled?: boolean;
 }
 
@@ -156,9 +147,4 @@ export interface RoutineRunResponse {
 
 export interface RoutineRunsResponse {
   runs: RoutineRun[];
-}
-
-export interface RoutineRunCrystallizeResponse extends AutomationSourceIngestionResponse {
-  routineId: string;
-  runId: string;
 }

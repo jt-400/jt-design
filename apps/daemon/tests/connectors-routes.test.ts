@@ -135,7 +135,6 @@ function mockComposioFetch(options: MockComposioFetchOptions = {}): void {
       return composioJson({
         items: [
           { slug: 'NOTION_SEARCH', name: 'Search Notion', description: 'Search Notion pages and databases.', toolkit: { slug: 'notion' }, input_parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'], additionalProperties: false }, tags: ['read'] },
-          { slug: 'NOTION_SEARCH_NOTION_PAGE', name: 'Search Notion pages and databases', description: 'Searches Notion pages and databases by title. Database pages can create large responses for databases with many properties.', toolkit: { slug: 'notion' }, input_parameters: { type: 'object', properties: { query: { type: 'string' }, page_size: { type: 'integer', minimum: 1, maximum: 100 } }, additionalProperties: false }, tags: [] },
           { slug: 'NOTION_FETCH_DATABASE', name: 'Fetch database', description: 'Read a Notion database.', toolkit: { slug: 'notion' }, input_parameters: { type: 'object', properties: { database_id: { type: 'string' } }, required: ['database_id'], additionalProperties: false }, tags: ['read'] },
           { slug: 'NOTION_GET_PAGE', name: 'Get page', description: 'Read a Notion page.', toolkit: { slug: 'notion' }, input_parameters: { type: 'object', properties: { page_id: { type: 'string' } }, required: ['page_id'], additionalProperties: false }, tags: ['read'] },
         ],
@@ -777,7 +776,7 @@ describe('connector routes', () => {
     expect(html).toContain('<main aria-labelledby="callback-title">');
     expect(html).toContain('GitHub connected');
     expect(html).toContain('Open Design');
-    expect(html).toContain('open-design:connector-connected');
+    expect(html).toContain('jt-design:connector-connected');
     expect(html).toContain('function requestClose()');
     expect(html).toContain('Your browser blocked automatic closing. You can close this tab and return to Open Design.');
     expect(html).not.toContain('<p>Connector connected. You can close this window.</p>');
@@ -1138,11 +1137,6 @@ describe('connector routes', () => {
     expect(response.body.connectors.map((connector: ConnectorDetail) => connector.id)).toEqual(['notion']);
     expect(response.body.connectors[0].tools).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: 'notion.notion_search' }),
-      expect.objectContaining({
-        name: 'notion.notion_search_notion_page',
-        safety: expect.objectContaining({ sideEffect: 'read', approval: 'auto' }),
-        curation: expect.objectContaining({ useCases: ['personal_daily_digest'] }),
-      }),
       expect.objectContaining({ name: 'notion.notion_fetch_database' }),
       expect.objectContaining({ name: 'notion.notion_get_page' }),
     ]));

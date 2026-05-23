@@ -20,13 +20,13 @@ const spawnLoggedProcess = vi.fn(async ({ env }: { env: NodeJS.ProcessEnv }) => 
   }) as unknown as ChildProcess & { env: NodeJS.ProcessEnv };
 });
 
-vi.mock("@open-design/sidecar", () => ({
+vi.mock("@jt-design/sidecar", () => ({
   createSidecarLaunchEnv,
   requestJsonIpc,
   resolveAppIpcPath,
 }));
 
-vi.mock("@open-design/platform", () => ({
+vi.mock("@jt-design/platform", () => ({
   collectProcessTreePids: vi.fn(),
   createProcessStampArgs: vi.fn(() => []),
   isProcessAlive: vi.fn(() => true),
@@ -142,27 +142,6 @@ describe("startPackedMacApp", () => {
         `"namespaceBaseRoot": ${JSON.stringify(config.roots.runtime.namespaceBaseRoot)}`,
       );
       await expect(readFile(launchConfigPath, "utf8")).resolves.toContain('"appVersion": "1.2.3"');
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
-  });
-
-  it("uses the preview executable name for preview release namespaces", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
-    try {
-      const config = makeConfig(root, { namespace: "release-preview" });
-      const paths = resolveMacPaths(config);
-      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Open Design Preview");
-
-      await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
-      await writeFile(executablePath, "#!/bin/sh\nexit 0\n", "utf8");
-      await chmod(executablePath, 0o755);
-
-      const result = await startPackedMacApp(config);
-
-      expect(result.source).toBe("installed");
-      expect(result.executablePath).toBe(executablePath);
-      expect(result.status?.state).toBe("running");
     } finally {
       await rm(root, { force: true, recursive: true });
     }

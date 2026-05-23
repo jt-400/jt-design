@@ -1,14 +1,14 @@
 import type {
   ConnectionTestKind,
   ConnectionTestProtocol,
-} from '@open-design/contracts/api/connectionTest';
+} from '@jt-design/contracts/api/connectionTest';
 import type {
   ProviderModelOption,
   ProviderModelsRequest,
   ProviderModelsResponse,
-} from '@open-design/contracts/api/providerModels';
-import { isLoopbackApiHost } from '@open-design/contracts/api/connectionTest';
-import { redactSecrets, validateBaseUrlResolved } from './connectionTest.js';
+} from '@jt-design/contracts/api/providerModels';
+import { isLoopbackApiHost, validateBaseUrl } from '@jt-design/contracts/api/connectionTest';
+import { redactSecrets } from './connectionTest.js';
 
 type ProviderModelsInput = ProviderModelsRequest & { signal?: AbortSignal };
 
@@ -149,9 +149,7 @@ function extractGoogleModels(data: unknown): ProviderModelOption[] {
 }
 
 function providerModelsUrl(protocol: ConnectionTestProtocol, baseUrl: string, apiKey: string): string {
-  if (protocol === 'openai' || protocol === 'senseaudio') {
-    return appendVersionedApiPath(baseUrl, '/models');
-  }
+  if (protocol === 'openai') return appendVersionedApiPath(baseUrl, '/models');
   if (protocol === 'anthropic') {
     const url = new URL(appendVersionedApiPath(baseUrl, '/models'));
     url.searchParams.set('limit', '1000');
@@ -169,9 +167,7 @@ function providerModelsHeaders(
   protocol: ConnectionTestProtocol,
   apiKey: string,
 ): Record<string, string> {
-  if (protocol === 'openai' || protocol === 'senseaudio') {
-    return { authorization: `Bearer ${apiKey}` };
-  }
+  if (protocol === 'openai') return { authorization: `Bearer ${apiKey}` };
   if (protocol === 'anthropic') {
     return {
       'x-api-key': apiKey,
@@ -182,9 +178,7 @@ function providerModelsHeaders(
 }
 
 function extractModels(protocol: ConnectionTestProtocol, data: unknown): ProviderModelOption[] {
-  // SenseAudio's /v1/models response follows the OpenAI envelope
-  // (`{ data: [{ id, ... }] }`), so the same extractor handles both.
-  if (protocol === 'openai' || protocol === 'senseaudio') return extractOpenAiModels(data);
+  if (protocol === 'openai') return extractOpenAiModels(data);
   if (protocol === 'anthropic') return extractAnthropicModels(data);
   if (protocol === 'google') return extractGoogleModels(data);
   return [];
@@ -203,7 +197,7 @@ export async function listProviderModels(
     };
   }
 
-  const validated = await validateBaseUrlResolved(input.baseUrl);
+  const validated = validateBaseUrl(input.baseUrl);
   if (validated.error || !validated.parsed) {
     return {
       ok: false,

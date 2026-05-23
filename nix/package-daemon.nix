@@ -32,14 +32,20 @@
 #   see flake.nix for the override and how to bump the hash when
 #   `packageManager` advances.
 #
-# Workspace siblings the daemon depends on are built in dependency order
-# before the daemon itself; tsc emits each package's dist/, which is what
-# the daemon resolves at runtime via pnpm's symlinked node_modules.
+# Workspace siblings the daemon depends on (contracts, sidecar-proto,
+# sidecar, platform) are built in dependency order before the daemon
+# itself; tsc emits each package's dist/, which is what the daemon
+# resolves at runtime via pnpm's symlinked node_modules.
 let
   pname = "open-design-daemon";
   version = (lib.importJSON ../package.json).version;
 
-  pnpmDepsHash = (import ./pnpm-deps.nix).daemonHash;
+  # Vendored pnpm store. The hash MUST be pinned on first build:
+  # `nix build .#daemon` will fail with the expected hash printed; copy
+  # that into `pnpmDepsHash` below. Bump it whenever pnpm-lock.yaml
+  # changes.
+  pnpmDepsHash = "sha256-KF3Mld72/iau+pJmA7HvnanRx8VLtDP0N624SKrtrrc=";
+  # pnpmDepsHash = lib.fakeHash;
 in
   stdenv.mkDerivation (finalAttrs: {
     inherit pname version src;
@@ -130,13 +136,9 @@ in
 
       for target in \
         packages/contracts \
-        packages/registry-protocol \
-        packages/agui-adapter \
-        packages/plugin-runtime \
         packages/sidecar-proto \
         packages/sidecar \
         packages/platform \
-        packages/diagnostics \
         apps/daemon
       do
         pnpm -C "$target" run --if-present build
@@ -152,20 +154,6 @@ in
       # resolve sibling packages by relative paths, so we cannot prune to
       # just apps/daemon.
       cp -r . $out/lib/open-design/
-
-      # Root devDependencies expose tool workspaces via pnpm symlinks, but the
-      # daemon derivation intentionally filters tools/ out of src because they
-      # are not needed at runtime. Prune the dangling symlinks from the copied
-      # node_modules tree so Nix fixup does not fail on broken links.
-      rm -f \
-        $out/lib/open-design/node_modules/@open-design/tools-dev \
-        $out/lib/open-design/node_modules/@open-design/tools-pack \
-        $out/lib/open-design/node_modules/@open-design/tools-pr \
-        $out/lib/open-design/node_modules/@open-design/tools-serve \
-        $out/lib/open-design/node_modules/.bin/tools-dev \
-        $out/lib/open-design/node_modules/.bin/tools-pack \
-        $out/lib/open-design/node_modules/.bin/tools-pr \
-        $out/lib/open-design/node_modules/.bin/tools-serve
 
       chmod +x $out/lib/open-design/apps/daemon/dist/cli.js
 

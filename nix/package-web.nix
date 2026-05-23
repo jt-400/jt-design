@@ -26,7 +26,12 @@ let
   pname = "open-design-web";
   version = (lib.importJSON ../package.json).version;
 
-  pnpmDepsHash = (import ./pnpm-deps.nix).webHash;
+  # Vendored pnpm store. The hash MUST be pinned on first build:
+  # `nix build .#web` will fail with the expected hash printed; copy
+  # that into `pnpmDepsHash` below. Bump it whenever pnpm-lock.yaml
+  # changes.
+  pnpmDepsHash = "sha256-KF3Mld72/iau+pJmA7HvnanRx8VLtDP0N624SKrtrrc=";
+  # pnpmDepsHash = lib.fakeHash;
 in
   stdenv.mkDerivation (finalAttrs: {
     inherit pname version src;
@@ -52,7 +57,6 @@ in
       runHook preBuild
       for target in \
         packages/contracts \
-        packages/host \
         packages/sidecar-proto \
         packages/sidecar \
         packages/platform

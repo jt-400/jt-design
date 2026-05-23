@@ -19,7 +19,7 @@ import { projectDir, resolveProjectDir } from './projects.js';
 const IGNORE_NAMES = new Set([
   '.git',
   'node_modules',
-  '.od',
+  '.jtd',
   'debug',
   '.DS_Store',
   // Python virtual environments and caches — can contain tens of thousands of
@@ -66,19 +66,9 @@ export const DEFAULT_AWAIT_WRITE_FINISH = {
 };
 
 const registry = new Map<string, WatcherEntry>();
-const PREFERS_POLLING_IN_TESTS = process.env.NODE_ENV === 'test';
 
-function isPollingFallbackError(err: unknown): boolean {
-  const code = (err as NodeJS.ErrnoException | undefined)?.code;
-  return code === 'EMFILE' || code === 'ENOSPC';
-}
-
-function createWatcher(
-  dir: string,
-  opts: Required<Pick<ProjectWatcherOptions, 'ignored' | 'awaitWriteFinish'>>,
-  usePolling: boolean,
-): FSWatcher {
-  const watcherOptions = {
+function makeEntry(dir: string, opts: Required<Pick<ProjectWatcherOptions, 'ignored' | 'awaitWriteFinish'>>): WatcherEntry {
+  const watcher = chokidar.watch(dir, {
     ignored: opts.ignored,
     ignoreInitial: true,
     awaitWriteFinish: opts.awaitWriteFinish,
@@ -87,31 +77,29 @@ function createWatcher(
     // path ignore predicate keeps emitted events project-scoped, an unhandled
     // symlink would still cost descriptors and surface external FS activity.
     followSymlinks: false,
-    usePolling,
-    ...(usePolling ? { interval: 100, binaryInterval: 300 } : {}),
-  };
-  return chokidar.watch(dir, watcherOptions);
-}
+  });
 
-function makeEntry(dir: string, opts: Required<Pick<ProjectWatcherOptions, 'ignored' | 'awaitWriteFinish'>>): WatcherEntry {
+  // chokidar's FSWatcher is an EventEmitter. Without an `error` listener,
+  // transient FS faults (ENOSPC, EPERM, EMFILE on saturated inotify watches)
+  // would surface as unhandled exceptions and could crash the daemon — taking
+  // every other route down with it. Log and keep the watcher alive; refcount
+  // cleanup is unaffected.
+  watcher.on('error', (err) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[project-watchers] chokidar error in', dir, err);
+    }
+  });
+
   let resolveReady: () => void;
   const ready = new Promise<void>((resolve) => { resolveReady = resolve; });
-  let readyResolved = false;
-  const subscribers = new Set<ProjectWatchCallback>();
+  watcher.once('ready', () => resolveReady());
+
   const entry: WatcherEntry = {
     dir,
-    watcher: createWatcher(dir, opts, PREFERS_POLLING_IN_TESTS),
+    watcher,
     ready,
-    subscribers,
+    subscribers: new Set(),
     closing: null,
-  };
-  let usingPollingFallback = PREFERS_POLLING_IN_TESTS;
-  let switchingToPolling = false;
-
-  const resolveReadyOnce = () => {
-    if (readyResolved) return;
-    readyResolved = true;
-    resolveReady();
   };
 
   const broadcast = (kind: ProjectWatchKind) => (absPath: string) => {
@@ -131,35 +119,9 @@ function makeEntry(dir: string, opts: Required<Pick<ProjectWatcherOptions, 'igno
     }
   };
 
-  const attachWatcher = (watcher: FSWatcher) => {
-    watcher.once('ready', () => resolveReadyOnce());
-    watcher.on('add', broadcast('add'));
-    watcher.on('change', broadcast('change'));
-    watcher.on('unlink', broadcast('unlink'));
-    // chokidar's FSWatcher is an EventEmitter. Without an `error` listener,
-    // transient FS faults (ENOSPC, EPERM, EMFILE on saturated inotify watches)
-    // would surface as unhandled exceptions and could crash the daemon.
-    watcher.on('error', (err) => {
-      if (isPollingFallbackError(err) && !usingPollingFallback && !switchingToPolling) {
-        switchingToPolling = true;
-        const next = createWatcher(dir, opts, true);
-        usingPollingFallback = true;
-        entry.watcher = next;
-        attachWatcher(next);
-        void watcher.close().catch(() => {});
-        switchingToPolling = false;
-        return;
-      }
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[project-watchers] chokidar error in', dir, err);
-      }
-      // A watcher that fails before it reaches ready would otherwise hang every
-      // caller awaiting `sub.ready`.
-      resolveReadyOnce();
-    });
-  };
-
-  attachWatcher(entry.watcher);
+  watcher.on('add', broadcast('add'));
+  watcher.on('change', broadcast('change'));
+  watcher.on('unlink', broadcast('unlink'));
 
   return entry;
 }
@@ -190,8 +152,8 @@ export function subscribe(projectsRoot: string, projectId: string, onEvent: Proj
   if (!entry) {
     const factory = opts._watcherFactory || makeEntry;
     entry = factory(dir, {
-      ignored: opts.ignored ?? makeIgnored(dir),
-      awaitWriteFinish: opts.awaitWriteFinish ?? DEFAULT_AWAIT_WRITE_FINISH,
+      ignored: opts.ignored || makeIgnored(dir),
+      awaitWriteFinish: opts.awaitWriteFinish || DEFAULT_AWAIT_WRITE_FINISH,
     });
     registry.set(key, entry);
   }

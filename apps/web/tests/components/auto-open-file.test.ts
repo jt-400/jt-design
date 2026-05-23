@@ -22,7 +22,7 @@ describe('decideAutoOpenAfterWrite', () => {
     // we must NOT open a placeholder tab for it. filePath has a slash, so
     // the basename fallback is intentionally skipped.
     const result = decideAutoOpenAfterWrite(
-      '/home/bryan/projects/open-design/apps/daemon/src/project-watchers.ts',
+      '/home/bryan/projects/jt-design/apps/daemon/src/project-watchers.ts',
       [
         { name: 'index.html', path: 'index.html' },
         { name: 'App.jsx', path: 'App.jsx' },
@@ -46,7 +46,7 @@ describe('decideAutoOpenAfterWrite', () => {
     // file lives at "prototype/App.jsx". The decision must still resolve
     // unambiguously, returning the project-relative file name.
     const result = decideAutoOpenAfterWrite(
-      '/home/bryan/projects/open-design/.od/projects/abc/prototype/App.jsx',
+      '/home/bryan/projects/jt-design/.od/projects/abc/prototype/App.jsx',
       [
         { name: 'index.html', path: 'index.html' },
         { name: 'prototype/App.jsx', path: 'prototype/App.jsx' },
@@ -97,43 +97,5 @@ describe('decideAutoOpenAfterWrite', () => {
       { name: 'lib/App.jsx', path: 'lib/App.jsx' },
     ]);
     expect(result).toEqual({ shouldOpen: false, fileName: null });
-  });
-
-  it('declines to auto-open a .jsx module loaded by a sibling HTML entry', () => {
-    // icons.jsx is a module of a multi-file React prototype (loaded by
-    // "Backups Panel.html" via <script type="text/babel" src>). It has no
-    // standalone preview, so auto-opening it strands the user on a dead-end
-    // tab. Issue #2744.
-    const result = decideAutoOpenAfterWrite(
-      'icons.jsx',
-      [
-        { name: 'icons.jsx', path: 'icons.jsx' },
-        { name: 'Backups Panel.html', path: 'Backups Panel.html' },
-      ],
-      { moduleFileNames: new Set(['icons.jsx']) },
-    );
-    expect(result).toEqual({ shouldOpen: false, fileName: null });
-  });
-
-  it('still auto-opens the same file when no module set is supplied (back-compat)', () => {
-    // Proves the suppression is driven solely by moduleFileNames: the legacy
-    // two-arg call path is unchanged, so this test goes red if the guard ever
-    // suppresses unconditionally.
-    const result = decideAutoOpenAfterWrite('icons.jsx', [
-      { name: 'icons.jsx', path: 'icons.jsx' },
-    ]);
-    expect(result).toEqual({ shouldOpen: true, fileName: 'icons.jsx' });
-  });
-
-  it('still auto-opens a standalone artifact even when other modules exist', () => {
-    const result = decideAutoOpenAfterWrite(
-      'landing.html',
-      [
-        { name: 'landing.html', path: 'landing.html' },
-        { name: 'icons.jsx', path: 'icons.jsx' },
-      ],
-      { moduleFileNames: new Set(['icons.jsx']) },
-    );
-    expect(result).toEqual({ shouldOpen: true, fileName: 'landing.html' });
   });
 });

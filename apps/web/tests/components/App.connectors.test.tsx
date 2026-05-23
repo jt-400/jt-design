@@ -24,7 +24,7 @@ import {
 } from '../../src/providers/registry';
 import { listProjects, listTemplates } from '../../src/state/projects';
 
-const useRouteMock = vi.fn(() => ({ kind: 'home' as const, view: 'home' as const }));
+const useRouteMock = vi.fn(() => ({ kind: 'home' as const }));
 
 vi.mock('../../src/router', () => ({
   navigate: vi.fn(),
@@ -32,48 +32,10 @@ vi.mock('../../src/router', () => ({
 }));
 
 vi.mock('../../src/components/EntryView', () => ({
-  EntryView: ({
-    config,
-    onOpenSettings,
-    onPersistComposioKey,
-  }: {
-    config: AppConfig;
-    onOpenSettings: (section?: 'composio') => void;
-    onPersistComposioKey: (composio: AppConfig['composio']) => void;
-  }) => (
-    <div>
-      <button type="button" onClick={() => onOpenSettings('composio')}>
-        Open connectors settings
-      </button>
-      <button type="button" onClick={() => onOpenSettings()}>
-        Open execution settings
-      </button>
-      <div>Composio tail: {config.composio?.apiKeyTail ?? 'none'}</div>
-      <button
-        type="button"
-        onClick={() =>
-          onPersistComposioKey({
-            apiKey: 'cmp_secret_replacement',
-            apiKeyConfigured: true,
-            apiKeyTail: config.composio?.apiKeyTail ?? '',
-          })
-        }
-      >
-        Save connectors key
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onPersistComposioKey({
-            apiKey: '',
-            apiKeyConfigured: false,
-            apiKeyTail: '',
-          })
-        }
-      >
-        Clear connectors key
-      </button>
-    </div>
+  EntryView: ({ onOpenSettings }: { onOpenSettings: (section?: 'composio') => void }) => (
+    <button type="button" onClick={() => onOpenSettings('composio')}>
+      Open connectors settings
+    </button>
   ),
 }));
 
@@ -244,6 +206,7 @@ describe('App connectors settings flows', () => {
     });
 
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open connectors settings' }));
 
     await waitFor(() => {
       expect(screen.getByText('Composio tail: uQEg')).toBeTruthy();
@@ -273,74 +236,24 @@ describe('App connectors settings flows', () => {
     const banner = container.querySelector('.privacy-consent-banner');
     expect(banner?.querySelector('.seg-control')).toBeNull();
     expect(banner?.querySelector('.seg-btn.active')).toBeNull();
-    expect(screen.getByRole('button', { name: 'I get it' }).className).toContain(
+    expect(screen.getByRole('button', { name: 'Help improve' }).className).toContain(
       'privacy-consent-action',
     );
   });
 
-  it('keeps the first-run privacy banner mounted while settings is open', async () => {
-    // The banner and Settings have independent lifecycles. The banner's
-    // z-index in index.css sits above the modal backdrop, so opening
-    // Settings (or any other modal) must not unmount the banner — the
-    // user has to be able to acknowledge the disclosure from any view.
+  it('hides first-run privacy consent while settings is open', async () => {
     const { container } = render(<App />);
 
     await waitFor(() => {
       expect(container.querySelector('.privacy-consent-banner')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open execution settings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open connectors settings' }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Settings dialog' })).toBeTruthy();
     });
-    expect(container.querySelector('.privacy-consent-banner')).toBeTruthy();
-  });
-
-  it('withholds the privacy banner until onboarding completes', async () => {
-    // First-run users should land on the welcome panel without the
-    // privacy disclosure layered on top. The banner appears only after
-    // onboardingCompleted flips to true (Skip and finish both flip it).
-    mockedLoadConfig.mockReturnValue({ ...baseConfig, onboardingCompleted: false });
-    mockedFetchDaemonConfig.mockResolvedValue({ onboardingCompleted: false });
-
-    const { container } = render(<App />);
-
-    await waitFor(() => {
-      expect(mockedFetchDaemonConfig).toHaveBeenCalled();
-    });
-    // Give the bootstrap microtasks a turn to settle; banner must still
-    // be absent because onboardingCompleted is false.
-    await waitFor(() => {
-      expect(container.querySelector('.privacy-consent-banner')).toBeNull();
-    });
-  });
-
-  it('shows the privacy banner on non-home routes once onboarding completes', async () => {
-    // The design-system finish path drops the user into a project view
-    // (the first generation runs there). Product wants the disclosure to
-    // appear in that view too — the user is already waiting for output,
-    // so there is no benefit to delaying the banner until they navigate
-    // back to home.
-    useRouteMock.mockReturnValue({
-      kind: 'project',
-      projectId: 'proj-1',
-      conversationId: null,
-      fileName: null,
-    } as never);
-
-    try {
-      const { container } = render(<App />);
-
-      await waitFor(() => {
-        expect(container.querySelector('.privacy-consent-banner')).toBeTruthy();
-      });
-    } finally {
-      useRouteMock.mockReturnValue({
-        kind: 'home' as const,
-        view: 'home' as const,
-      } as never);
-    }
+    expect(container.querySelector('.privacy-consent-banner')).toBeNull();
   });
 
   it('normalizes local persistence but sends the raw replacement key to the daemon on save', async () => {
@@ -354,6 +267,11 @@ describe('App connectors settings flows', () => {
     });
 
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open connectors settings' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Settings dialog' })).toBeTruthy();
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Save connectors key' }));
 
@@ -402,6 +320,11 @@ describe('App connectors settings flows', () => {
     });
 
     render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open connectors settings' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Settings dialog' })).toBeTruthy();
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear connectors key' }));
 

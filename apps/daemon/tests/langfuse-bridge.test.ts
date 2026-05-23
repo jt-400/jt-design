@@ -135,37 +135,6 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('does nothing when conversation/tool content reporting is off', async () => {
-    await writeAppCfg({
-      installationId: 'install-1',
-      telemetry: { metrics: true, content: false, artifactManifest: true },
-    });
-    const fetchSpy = vi.fn();
-    process.env.LANGFUSE_PUBLIC_KEY = 'pk';
-    process.env.LANGFUSE_SECRET_KEY = 'sk';
-    try {
-      await reportRunCompletedFromDaemon({
-        db: makeDbWithListMessages({
-          'conv-1': [
-            {
-              id: 'msg-1',
-              role: 'assistant',
-              content: 'sensitive output',
-              producedFiles: [{ name: 'secret.html', kind: 'html', size: 1 }],
-            },
-          ],
-        }),
-        dataDir,
-        run: makeRun() as any,
-        fetchImpl: fetchSpy as any,
-      });
-    } finally {
-      delete process.env.LANGFUSE_PUBLIC_KEY;
-      delete process.env.LANGFUSE_SECRET_KEY;
-    }
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
   it('does nothing when no app-config.json exists (fresh install)', async () => {
     const fetchSpy = vi.fn();
     await reportRunCompletedFromDaemon({
@@ -270,7 +239,7 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
   it('attaches turn-level config (model / reasoning / skill / DS) to trace + generation', async () => {
     await writeAppCfg({
       installationId: 'install-uuid-1',
-      telemetry: { metrics: true, content: true, artifactManifest: false },
+      telemetry: { metrics: true, content: false, artifactManifest: false },
     });
     const fetchSpy = vi
       .fn()
@@ -334,12 +303,12 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
     expect(generation.modelParameters).toEqual({ reasoning: 'high' });
   });
 
-  it('omits artifacts when that gate is off', async () => {
+  it('omits content + artifacts when those gates are off', async () => {
     await writeAppCfg({
       installationId: 'install-1',
       telemetry: {
         metrics: true,
-        content: true,
+        content: false,
         artifactManifest: false,
       },
     });
@@ -369,8 +338,8 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
     }
     const init = fetchSpy.mock.calls[0]![1] as RequestInit;
     const trace = JSON.parse(init.body as string).batch[0].body;
-    expect(trace.input).toBe('design a coffee landing page');
-    expect(trace.output).toBe('sensitive output');
+    expect(trace.input).toBeUndefined();
+    expect(trace.output).toBeUndefined();
     expect(trace.metadata.artifacts).toBeUndefined();
     // tokens + eventsSummary are still in metadata since they're metrics
     expect(trace.metadata.tokens).toEqual({
@@ -423,7 +392,7 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
   it('passes status=failed and a clipped error message through', async () => {
     await writeAppCfg({
       installationId: 'install-1',
-      telemetry: { metrics: true, content: true },
+      telemetry: { metrics: true },
     });
     const fetchSpy = vi
       .fn()
@@ -496,7 +465,7 @@ describe('langfuse-bridge.reportRunCompletedFromDaemon', () => {
   it('uses the persisted terminal status when the in-memory run has not settled yet', async () => {
     await writeAppCfg({
       installationId: 'install-uuid-1',
-      telemetry: { metrics: true, content: true, artifactManifest: false },
+      telemetry: { metrics: true, content: false, artifactManifest: false },
     });
     const run = makeRun({
       status: 'cancelRequested',

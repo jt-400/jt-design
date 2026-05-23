@@ -52,17 +52,11 @@ export interface DirectionCard {
   bodyFont: string;
 }
 
-export interface FormOption {
-  label: string;
-  value: string;
-  description?: string;
-}
-
 export interface FormQuestion {
   id: string;
   label: string;
   type: QuestionType;
-  options?: FormOption[];
+  options?: string[];
   placeholder?: string;
   required?: boolean;
   help?: string;
@@ -165,7 +159,9 @@ function tryParseForm(body: string, attrs: Record<string, string>): QuestionForm
         : `q${i + 1}`;
     const label = typeof qo.label === 'string' ? qo.label : id;
     const type = normalizeType(qo.type);
-    const options = parseOptions(qo.options);
+    const options = Array.isArray(qo.options)
+      ? qo.options.filter((o): o is string => typeof o === 'string')
+      : undefined;
     const placeholder = typeof qo.placeholder === 'string' ? qo.placeholder : undefined;
     const help = typeof qo.help === 'string' ? qo.help : undefined;
     const required = qo.required === true;
@@ -176,7 +172,14 @@ function tryParseForm(body: string, attrs: Record<string, string>): QuestionForm
         ? qo.maxSelections
         : undefined;
     const cards = parseDirectionCards(qo.cards);
-    const defaultValue = parseDefaultValue(qo, options);
+    const defaultValue =
+      typeof qo.defaultValue === 'string'
+        ? qo.defaultValue
+        : Array.isArray(qo.defaultValue)
+          ? qo.defaultValue.filter((v): v is string => typeof v === 'string')
+          : typeof qo.default === 'string'
+            ? qo.default
+            : undefined;
     questions.push({
       id,
       label,
@@ -222,57 +225,6 @@ function normalizeType(raw: unknown): QuestionType {
   return 'text';
 }
 
-function parseOptions(raw: unknown): FormOption[] | undefined {
-  if (!Array.isArray(raw)) return undefined;
-  const options = raw
-    .map(parseOption)
-    .filter((option): option is FormOption => option !== null);
-  return options.length > 0 ? options : undefined;
-}
-
-function parseOption(raw: unknown): FormOption | null {
-  if (typeof raw === 'string') {
-    const label = raw.trim();
-    return label.length > 0 ? { label, value: label } : null;
-  }
-  if (!raw || typeof raw !== 'object') return null;
-  const obj = raw as Record<string, unknown>;
-  const label = typeof obj.label === 'string' ? obj.label.trim() : '';
-  if (label.length === 0) return null;
-  const value =
-    typeof obj.value === 'string' && obj.value.trim().length > 0
-      ? obj.value.trim()
-      : label;
-  const description =
-    typeof obj.description === 'string' && obj.description.trim().length > 0
-      ? obj.description.trim()
-      : undefined;
-  return {
-    label,
-    value,
-    ...(description ? { description } : {}),
-  };
-}
-
-function parseDefaultValue(
-  question: Record<string, unknown>,
-  options: FormOption[] | undefined,
-): string | string[] | undefined {
-  const raw =
-    typeof question.defaultValue === 'string' || Array.isArray(question.defaultValue)
-      ? question.defaultValue
-      : typeof question.default === 'string'
-        ? question.default
-        : undefined;
-  if (typeof raw === 'string') return formOptionValueForLabel({ options }, raw);
-  if (Array.isArray(raw)) {
-    return raw
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => formOptionValueForLabel({ options }, value));
-  }
-  return undefined;
-}
-
 function parseDirectionCards(raw: unknown): DirectionCard[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out: DirectionCard[] = [];
@@ -314,41 +266,10 @@ export function formatFormAnswers(
   for (const q of form.questions) {
     const v = answers[q.id];
     let display: string;
-    if (Array.isArray(v)) {
-      display = v.length > 0 ? v.map((value) => formOptionDisplayForValue(q, value)).join(', ') : '(skipped)';
-    } else if (typeof v === 'string') {
-      display = v.trim().length > 0 ? formOptionDisplayForValue(q, v.trim()) : '(skipped)';
-    }
+    if (Array.isArray(v)) display = v.length > 0 ? v.join(', ') : '(skipped)';
+    else if (typeof v === 'string') display = v.trim().length > 0 ? v.trim() : '(skipped)';
     else display = '(skipped)';
     lines.push(`- ${q.label}: ${display}`);
   }
   return lines.join('\n');
-}
-
-function formOptionDisplayForValue(
-  question: Pick<FormQuestion, 'options'>,
-  value: string,
-): string {
-  const match = question.options?.find((option) => option.value === value || option.label === value);
-  if (!match) return value;
-  if (match.value === match.label) return match.label;
-  return `${match.label} [value: ${match.value}]`;
-}
-
-export function formOptionLabelForValue(
-  question: Pick<FormQuestion, 'options'>,
-  value: string,
-): string {
-  const match = question.options?.find((option) => option.value === value || option.label === value);
-  return match?.label ?? value;
-}
-
-export function formOptionValueForLabel(
-  question: Pick<FormQuestion, 'options'>,
-  labelOrValue: string,
-): string {
-  const match = question.options?.find(
-    (option) => option.value === labelOrValue || option.label === labelOrValue,
-  );
-  return match?.value ?? labelOrValue;
 }

@@ -3,7 +3,6 @@ import { dirname, join } from "node:path";
 
 import type { ToolPackConfig } from "../config.js";
 import { macResources } from "../resources.js";
-import { electronBuilderVersionForAppVersion } from "../versions.js";
 import { execFileAsync } from "./commands.js";
 import {
   ELECTRON_BUILDER_ASAR,
@@ -14,7 +13,6 @@ import {
   WEB_STANDALONE_RESOURCE_NAME,
 } from "./constants.js";
 import { pathExists } from "./fs.js";
-import { resolveMacInstallIdentity } from "./identity.js";
 import { readPackagedVersion } from "./manifest.js";
 import { sanitizeNamespace } from "./paths.js";
 import type { ElectronBuilderTarget, MacBuildOutput, MacPaths } from "./types.js";
@@ -82,14 +80,12 @@ export async function runElectronBuilder(
   targets: ElectronBuilderTarget[],
 ): Promise<void> {
   const namespaceToken = sanitizeNamespace(config.namespace);
-  const identity = resolveMacInstallIdentity(config);
   const packagedVersion = await readPackagedVersion(config);
-  const packageVersion = electronBuilderVersionForAppVersion(packagedVersion);
   const webStandaloneHookConfigPath = config.webOutputMode === "standalone"
     ? await writeWebStandaloneHookConfig(config, paths)
     : null;
   const builderConfig = {
-    appId: identity.appId,
+    appId: "io.open-design.desktop",
     artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
     afterPack: webStandaloneHookConfigPath == null ? undefined : macResources.webStandaloneAfterPackHook,
     afterSign: config.signed ? macResources.notarizeHook : undefined,
@@ -102,16 +98,16 @@ export async function runElectronBuilder(
     dmg: {
       icon: macResources.icon,
       iconSize: 96,
-      title: identity.installerTitle,
+      title: `${PRODUCT_NAME}-${namespaceToken}`,
     },
     electronDist: config.electronDistPath,
     electronVersion: config.electronVersion,
-    executableName: identity.executableName,
+    executableName: PRODUCT_NAME,
     extraMetadata: {
       main: "./main.cjs",
       name: "open-design-packaged-app",
-      productName: identity.productName,
-      version: packageVersion,
+      productName: PRODUCT_NAME,
+      version: packagedVersion,
     },
     extraResources: [
       { from: paths.resourceRoot, to: "open-design" },
@@ -132,7 +128,7 @@ export async function runElectronBuilder(
     },
     nodeGypRebuild: false,
     npmRebuild: false,
-    productName: identity.productName,
+    productName: PRODUCT_NAME,
     icon: macResources.icon,
     publish: [
       {

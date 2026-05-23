@@ -1,6 +1,6 @@
 import { appendFileSync } from "node:fs";
 
-import type { SidecarStamp } from "@open-design/sidecar-proto";
+import type { SidecarStamp } from "@jt-design/sidecar-proto";
 
 import type { PackagedNamespacePaths } from "./paths.js";
 
@@ -109,38 +109,6 @@ export function createFatalUncaughtExceptionHandler(
     process.removeListener("uncaughtException", handler);
     setImmediate(() => {
       throw error;
-    });
-  };
-  return handler;
-}
-
-/**
- * Parallel factory for the `unhandledRejection` listener installed by
- * `attachPackagedDesktopProcessLogging`. The harmless / fall-through
- * split must match `createFatalUncaughtExceptionHandler`: harmless
- * `setTypeOfService EINVAL` rejections log at warn and return,
- * anything else logs at error, removes the listener, and re-throws
- * via `setImmediate`.
- *
- * Without the detach + rethrow a non-harmless rejection would land in
- * this log line and silently keep the process alive, which would hide
- * real main-process bugs from Node/Electron's default fail-fast path
- * (the exact regression Siri-Ray and the codex P2 thread flagged on
- * the parallel desktop filter in PR #1298). The same matcher feeds
- * both factories, so the apps/desktop sibling stays in lockstep.
- */
-export function createFatalUnhandledRejectionHandler(
-  logger: PackagedDesktopLogger,
-): (reason: unknown) => void {
-  const handler = (reason: unknown): void => {
-    if (isHarmlessSocketOptionError(reason)) {
-      logger.warn("packaged desktop swallowed harmless socket option rejection", { reason });
-      return;
-    }
-    logger.error("packaged desktop unhandled rejection", { reason });
-    process.removeListener("unhandledRejection", handler);
-    setImmediate(() => {
-      throw reason;
     });
   };
   return handler;
@@ -262,12 +230,13 @@ export function attachPackagedDesktopProcessLogging(options: {
   // existed. See `createFatalUncaughtExceptionHandler` for the
   // unit-tested factory.
   process.on("uncaughtException", createFatalUncaughtExceptionHandler(logger));
-  // The unhandledRejection handler must mirror the uncaughtException
-  // policy: harmless EINVAL shapes are swallowed, every other reason
-  // takes the fail-fast path so a real main-process bug surfaces
-  // through Node/Electron's default crash semantics instead of being
-  // hidden as a log line. See `createFatalUnhandledRejectionHandler`.
-  process.on("unhandledRejection", createFatalUnhandledRejectionHandler(logger));
+  process.on("unhandledRejection", (reason) => {
+    if (isHarmlessSocketOptionError(reason)) {
+      logger.warn("packaged desktop swallowed harmless socket option rejection", { reason });
+      return;
+    }
+    logger.error("packaged desktop unhandled rejection", { reason });
+  });
   process.on("beforeExit", (code) => {
     logger.warn("packaged desktop beforeExit", { code });
   });

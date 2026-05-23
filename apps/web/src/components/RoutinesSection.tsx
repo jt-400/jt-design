@@ -7,30 +7,31 @@ import type {
   RoutineRun,
   RoutineSchedule,
   Weekday,
-} from '@open-design/contracts';
+} from '@jt-design/contracts';
 
 import { Icon } from './Icon';
 import { navigate } from '../router';
-import { useT } from '../i18n';
-import type { Dict } from '../i18n/types';
-
-// Shared translator signature: every sub-component in this file is module-scoped,
-// so `t` from `useT()` is threaded down as a prop rather than re-hooked.
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 type ProjectSummary = { id: string; name: string };
 
-type RoutinesSectionProps = {
-  onClose?: () => void;
-};
-
 type ScheduleKind = RoutineSchedule['kind'];
 
-const SCHEDULE_KINDS: ScheduleKind[] = ['hourly', 'daily', 'weekdays', 'weekly'];
+const SCHEDULE_KINDS: { kind: ScheduleKind; label: string }[] = [
+  { kind: 'hourly', label: 'Hourly' },
+  { kind: 'daily', label: 'Daily' },
+  { kind: 'weekdays', label: 'Weekdays' },
+  { kind: 'weekly', label: 'Weekly' },
+];
 
-// IANA `Date.getDay()` order: 0 = Sunday … 6 = Saturday. Display labels come
-// from the `routines.weekday.*` i18n keys, keyed by this same index.
-const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
+const WEEKDAY_LABELS: { value: Weekday; short: string; long: string }[] = [
+  { value: 0, short: 'Sun', long: 'Sunday' },
+  { value: 1, short: 'Mon', long: 'Monday' },
+  { value: 2, short: 'Tue', long: 'Tuesday' },
+  { value: 3, short: 'Wed', long: 'Wednesday' },
+  { value: 4, short: 'Thu', long: 'Thursday' },
+  { value: 5, short: 'Fri', long: 'Friday' },
+  { value: 6, short: 'Sat', long: 'Saturday' },
+];
 
 // Fallback list used only when the runtime doesn't expose
 // `Intl.supportedValuesOf('timeZone')`. The backend validator accepts any
@@ -112,24 +113,23 @@ function tzOptionLabel(timezone: string): string {
   return tzCityLabel(timezone);
 }
 
-function formatTime12h(time: string, t: TranslateFn): string {
+function formatTime12h(time: string): string {
   const m = /^(\d{2}):(\d{2})$/.exec(time);
   if (!m) return time;
   const h = Number(m[1]);
   const mm = m[2];
-  const suffix = h >= 12 ? t('routines.timePm') : t('routines.timeAm');
+  const suffix = h >= 12 ? 'PM' : 'AM';
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${h12}:${mm} ${suffix}`;
 }
 
 function describeSchedule(
   schedule: RoutineSchedule,
-  t: TranslateFn,
   nextRunAt?: number | null,
 ): string {
   if (schedule.kind === 'hourly') {
     const mm = String(schedule.minute).padStart(2, '0');
-    return t('routines.describe.hourly', { minute: mm });
+    return `Runs every hour at :${mm}`;
   }
   // Anchor the GMT offset to the next actual fire time so DST-observing
   // zones don't drift seasonally — a New York routine created in winter
@@ -140,23 +140,14 @@ function describeSchedule(
     ? gmtLabel(schedule.timezone, new Date(nextRunAt))
     : tzCityLabel(schedule.timezone);
   if (schedule.kind === 'daily') {
-    return t('routines.describe.daily', {
-      time: formatTime12h(schedule.time, t),
-      tz,
-    });
+    return `Runs daily at ${formatTime12h(schedule.time)} ${tz}`;
   }
   if (schedule.kind === 'weekdays') {
-    return t('routines.describe.weekdays', {
-      time: formatTime12h(schedule.time, t),
-      tz,
-    });
+    return `Runs Mon–Fri at ${formatTime12h(schedule.time)} ${tz}`;
   }
-  const day = t(`routines.weekday.long.${schedule.weekday}`);
-  return t('routines.describe.weekly', {
-    day,
-    time: formatTime12h(schedule.time, t),
-    tz,
-  });
+  const day =
+    WEEKDAY_LABELS.find((w) => w.value === schedule.weekday)?.long ?? 'Sunday';
+  return `Runs every ${day} at ${formatTime12h(schedule.time)} ${tz}`;
 }
 
 function formatRelative(ts: number | null | undefined): string {
@@ -170,16 +161,6 @@ function formatRunTimestamp(ts: number): string {
     dateStyle: 'short',
     timeStyle: 'short',
   });
-}
-
-function runFailureReason(run: {
-  status: RoutineRun['status'];
-  error?: string | null;
-  summary?: string | null;
-} | null | undefined): string | null {
-  if (!run || run.status !== 'failed') return null;
-  const reason = (run.error || run.summary || '').trim();
-  return reason || null;
 }
 
 type FormState = {
@@ -208,34 +189,6 @@ function emptyForm(): FormState {
   };
 }
 
-function formFromRoutine(routine: Routine): FormState {
-  const base = emptyForm();
-  const schedule = routine.schedule;
-  if (schedule.kind === 'hourly') {
-    base.kind = 'hourly';
-    base.minute = schedule.minute;
-  } else if (schedule.kind === 'weekly') {
-    base.kind = 'weekly';
-    base.weekday = schedule.weekday;
-    base.time = schedule.time;
-    base.timezone = schedule.timezone;
-  } else {
-    base.kind = schedule.kind;
-    base.time = schedule.time;
-    base.timezone = schedule.timezone;
-  }
-  if (routine.target.mode === 'reuse') {
-    base.mode = 'reuse';
-    base.projectId = routine.target.projectId;
-  } else {
-    base.mode = 'create_each_run';
-    base.projectId = '';
-  }
-  base.name = routine.name;
-  base.prompt = routine.prompt;
-  return base;
-}
-
 function buildSchedule(form: FormState): RoutineSchedule {
   if (form.kind === 'hourly') {
     return { kind: 'hourly', minute: form.minute };
@@ -255,45 +208,33 @@ function buildSchedule(form: FormState): RoutineSchedule {
   };
 }
 
-function StatusPill({
-  status,
-  t,
-}: {
-  status: RoutineRun['status'];
-  t: TranslateFn;
-}) {
-  return (
-    <span className={`routines-status routines-status-${status}`}>
-      {t(`routines.status.${status}`)}
-    </span>
-  );
+function StatusPill({ status }: { status: RoutineRun['status'] }) {
+  return <span className={`routines-status routines-status-${status}`}>{status}</span>;
 }
 
 function ScheduleEditor({
   form,
   setForm,
   timezones,
-  t,
 }: {
   form: FormState;
   setForm: (next: FormState) => void;
   timezones: string[];
-  t: TranslateFn;
 }) {
   return (
     <div className="routines-schedule-editor">
-      <div className="routines-field-label">{t('routines.fieldSchedule')}</div>
+      <div className="routines-field-label">Schedule</div>
       <div className="subtab-pill routines-kind-pills" role="tablist">
-        {SCHEDULE_KINDS.map((kind) => (
+        {SCHEDULE_KINDS.map((k) => (
           <button
             type="button"
-            key={kind}
+            key={k.kind}
             role="tab"
-            aria-selected={form.kind === kind}
-            className={form.kind === kind ? 'active' : ''}
-            onClick={() => setForm({ ...form, kind })}
+            aria-selected={form.kind === k.kind}
+            className={form.kind === k.kind ? 'active' : ''}
+            onClick={() => setForm({ ...form, kind: k.kind })}
           >
-            {t(`routines.kind.${kind}`)}
+            {k.label}
           </button>
         ))}
       </div>
@@ -301,7 +242,7 @@ function ScheduleEditor({
       {form.kind === 'hourly' ? (
         <div className="routines-fieldrow">
           <label className="routines-field">
-            <span>{t('routines.fieldMinute')}</span>
+            <span>Minute of every hour</span>
             <input
               type="number"
               min={0}
@@ -321,15 +262,15 @@ function ScheduleEditor({
 
       {form.kind === 'weekly' ? (
         <div className="routines-weekday-row">
-          {WEEKDAYS.map((value) => (
+          {WEEKDAY_LABELS.map((d) => (
             <button
               type="button"
-              key={value}
-              className={`routines-weekday${form.weekday === value ? ' active' : ''}`}
-              onClick={() => setForm({ ...form, weekday: value })}
-              aria-pressed={form.weekday === value}
+              key={d.value}
+              className={`routines-weekday${form.weekday === d.value ? ' active' : ''}`}
+              onClick={() => setForm({ ...form, weekday: d.value })}
+              aria-pressed={form.weekday === d.value}
             >
-              {t(`routines.weekday.short.${value}`)}
+              {d.short}
             </button>
           ))}
         </div>
@@ -338,7 +279,7 @@ function ScheduleEditor({
       {form.kind !== 'hourly' ? (
         <div className="routines-fieldrow routines-fieldrow-2col">
           <label className="routines-field">
-            <span>{t('routines.fieldTime')}</span>
+            <span>Time</span>
             <input
               type="time"
               value={form.time}
@@ -346,7 +287,7 @@ function ScheduleEditor({
             />
           </label>
           <label className="routines-field">
-            <span>{t('routines.fieldTimezone')}</span>
+            <span>Timezone</span>
             <select
               value={form.timezone}
               onChange={(e) => setForm({ ...form, timezone: e.target.value })}
@@ -362,23 +303,13 @@ function ScheduleEditor({
       ) : null}
 
       <p className="routines-schedule-hint">
-        {describeSchedule(buildSchedule(form), t)}
+        {describeSchedule(buildSchedule(form))}
       </p>
     </div>
   );
 }
 
-function RunHistory({
-  routineId,
-  refreshKey,
-  onClose,
-  t,
-}: {
-  routineId: string;
-  refreshKey: number;
-  onClose?: () => void;
-  t: TranslateFn;
-}) {
+function RunHistory({ routineId, refreshKey }: { routineId: string; refreshKey: number }) {
   const [runs, setRuns] = useState<RoutineRun[] | null>(null);
 
   useEffect(() => {
@@ -398,72 +329,43 @@ function RunHistory({
     };
   }, [routineId, refreshKey]);
 
-  if (runs === null)
-    return (
-      <div className="routines-history-empty">
-        {t('routines.runHistoryLoading')}
-      </div>
-    );
+  if (runs === null) return <div className="routines-history-empty">Loading runs…</div>;
   if (runs.length === 0)
-    return (
-      <div className="routines-history-empty">{t('routines.runHistoryEmpty')}</div>
-    );
+    return <div className="routines-history-empty">No runs yet.</div>;
 
   return (
     <ul className="routines-history">
-      {runs.map((r) => {
-        const failureReason = runFailureReason(r);
-        return (
-          <li key={r.id} className="routines-history-row">
-            <StatusPill status={r.status} t={t} />
-            <span className="routines-history-time">{formatRunTimestamp(r.startedAt)}</span>
-            <span className="routines-history-trigger">
-              {r.trigger === 'manual'
-                ? t('routines.triggerManual')
-                : t('routines.triggerScheduled')}
-            </span>
-            <button
-              type="button"
-              className="routines-history-link"
-              onClick={() => {
-                // Issue #1505: deep-link to this run's specific
-                // conversation, not just the project root. Without the
-                // conversation id, parallel runs that share a project
-                // (reuse mode) all resolve to the same default
-                // conversation in the project view, which made earlier
-                // runs look "absorbed" by the latest one.
-                navigate({
-                  kind: 'project',
-                  projectId: r.projectId,
-                  conversationId: r.conversationId ?? null,
-                  fileName: null,
-                });
-                onClose?.();
-              }}
-              title={t('routines.openProjectTitle')}
-            >
-              {t('routines.openProject')}
-              <Icon name="chevron-right" size={12} />
-            </button>
-            {failureReason ? (
-              <div className="routines-history-error">{failureReason}</div>
-            ) : null}
-          </li>
-        );
-      })}
+      {runs.map((r) => (
+        <li key={r.id} className="routines-history-row">
+          <StatusPill status={r.status} />
+          <span className="routines-history-time">{formatRunTimestamp(r.startedAt)}</span>
+          <span className="routines-history-trigger">
+            {r.trigger === 'manual' ? 'manual' : 'scheduled'}
+          </span>
+          <button
+            type="button"
+            className="routines-history-link"
+            onClick={() =>
+              navigate({ kind: 'project', projectId: r.projectId, fileName: null })
+            }
+            title="Open the project this run wrote to"
+          >
+            Open project
+            <Icon name="chevron-right" size={12} />
+          </button>
+        </li>
+      ))}
     </ul>
   );
 }
 
-export function RoutinesSection({ onClose }: RoutinesSectionProps) {
-  const t = useT();
+export function RoutinesSection() {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -519,7 +421,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
     setError(null);
     try {
       if (form.mode === 'reuse' && !form.projectId) {
-        throw new Error(t('routines.errorPickProject'));
+        throw new Error('Pick a project to reuse, or switch to "Create new each run"');
       }
       const target: RoutineProjectTarget =
         form.mode === 'reuse' && form.projectId
@@ -532,22 +434,16 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
         target,
         enabled: true,
       };
-      const isEdit = editingId !== null;
-      const url = isEdit ? `/api/routines/${editingId}` : '/api/routines';
-      const payload = isEdit
-        ? { name: body.name, prompt: body.prompt, schedule: body.schedule, target: body.target }
-        : body;
-      const res = await fetch(url, {
-        method: isEdit ? 'PATCH' : 'POST',
+      const res = await fetch('/api/routines', {
+        method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `${isEdit ? 'update' : 'create'} failed: ${res.status}`);
+        throw new Error(j.error || `create failed: ${res.status}`);
       }
       setShowForm(false);
-      setEditingId(null);
       setForm(emptyForm());
       void refresh();
     } catch (err) {
@@ -597,7 +493,8 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
   };
 
   const remove = async (id: string) => {
-    if (!window.confirm(t('routines.confirmDelete'))) return;
+    if (!window.confirm('Delete this routine? Past runs and their projects are kept.'))
+      return;
     setBusyId(id);
     try {
       const res = await fetch(`/api/routines/${id}`, { method: 'DELETE' });
@@ -618,7 +515,12 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
     <section className="settings-section routines-section">
       <div className="section-head">
         <div>
-          <h3>{t('routines.title')}</h3>
+          <h3>Routines</h3>
+          <p className="hint">
+            Scheduled, unattended agent sessions. Each run starts a new
+            conversation — either inside an existing project, or in a fresh
+            project minted on the spot.
+          </p>
         </div>
         {!showForm ? (
           <button
@@ -630,7 +532,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
             }}
           >
             <Icon name="plus" size={14} />
-            <span>{t('routines.newAutomation')}</span>
+            <span>New routine</span>
           </button>
         ) : null}
       </div>
@@ -644,31 +546,30 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
       {showForm ? (
         <form onSubmit={submit} className="routines-card routines-form">
           <label className="routines-field">
-            <span>{t('routines.fieldName')}</span>
+            <span>Name</span>
             <input
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder={t('routines.fieldNamePlaceholder')}
+              placeholder="Morning briefing"
               autoFocus
             />
           </label>
           <label className="routines-field">
-            <span>{t('routines.fieldPrompt')}</span>
+            <span>Prompt</span>
             <textarea
               required
               rows={4}
               value={form.prompt}
               onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-              placeholder={t('routines.fieldPromptPlaceholder')}
+              placeholder="Pull yesterday's GitHub + Linear activity and summarize what changed."
             />
           </label>
 
-          <ScheduleEditor form={form} setForm={setForm} timezones={timezones} t={t} />
+          <ScheduleEditor form={form} setForm={setForm} timezones={timezones} />
 
           <fieldset className="routines-fieldset">
-            <legend>{t('routines.fieldsetProject')}</legend>
-
+            <legend>Project</legend>
             <label className="routines-radio">
               <input
                 type="radio"
@@ -676,11 +577,10 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                 onChange={() => setForm({ ...form, mode: 'create_each_run' })}
               />
               <span>
-                <strong>{t('routines.modeCreate')}</strong>
-                <small>{t('routines.modeCreateHint')}</small>
+                <strong>Create a new project each run</strong>
+                <small>A fresh, isolated workspace per fire.</small>
               </span>
             </label>
-
             <label className="routines-radio">
               <input
                 type="radio"
@@ -688,26 +588,25 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                 onChange={() => setForm({ ...form, mode: 'reuse' })}
               />
               <span>
-                <strong>{t('routines.modeReuse')}</strong>
-                <small>{t('routines.modeReuseHint')}</small>
+                <strong>Reuse an existing project</strong>
+                <small>Each run lives as a new conversation inside the project.</small>
               </span>
             </label>
-
-            {form.mode === 'reuse' && (
+            {form.mode === 'reuse' ? (
               <select
                 className="routines-project-select"
                 value={form.projectId}
                 onChange={(e) => setForm({ ...form, projectId: e.target.value })}
                 required
               >
-                <option value="">{t('routines.pickProject')}</option>
+                <option value="">— Pick a project —</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
               </select>
-            )}
+            ) : null}
           </fieldset>
 
           <div className="routines-form-actions">
@@ -716,45 +615,34 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
               className="btn"
               onClick={() => {
                 setShowForm(false);
-                setEditingId(null);
                 setForm(emptyForm());
               }}
             >
-              {t('routines.cancel')}
+              Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {editingId
-                ? submitting
-                  ? t('routines.saving')
-                  : t('routines.save')
-                : submitting
-                  ? t('routines.creating')
-                  : t('routines.create')}
+              {submitting ? 'Creating…' : 'Create'}
             </button>
           </div>
         </form>
       ) : null}
 
       {loading ? (
-        <div className="routines-empty">{t('routines.loading')}</div>
+        <div className="routines-empty">Loading…</div>
       ) : routines.length === 0 ? (
         <div className="routines-empty">
-          <strong>{t('routines.empty')}</strong>
-          <p>{t('routines.emptyHint')}</p>
+          <strong>No routines yet.</strong>
+          <p>Click <em>New routine</em> to schedule an unattended agent run.</p>
         </div>
       ) : (
         <ul className="routines-list">
           {routines.map((r) => {
             const targetLabel =
               r.target.mode === 'reuse'
-                ? t('routines.targetReuse', {
-                    project:
-                      projectsById.get(r.target.projectId) ?? r.target.projectId,
-                  })
-                : t('routines.targetCreate');
+                ? `→ ${projectsById.get(r.target.projectId) ?? r.target.projectId}`
+                : '→ new project each run';
             const isBusy = busyId === r.id;
             const isExpanded = expandedId === r.id;
-            const failureReason = runFailureReason(r.lastRun);
             return (
               <li key={r.id} className={`routines-card routines-item${r.enabled ? '' : ' is-disabled'}`}>
                 <div className="routines-item-head">
@@ -762,28 +650,24 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     <div className="routines-item-title">
                       <strong>{r.name}</strong>
                       {!r.enabled ? (
-                        <span className="routines-tag">{t('routines.tagPaused')}</span>
+                        <span className="routines-tag">paused</span>
                       ) : null}
                     </div>
-                    <div className="routines-item-line">{describeSchedule(r.schedule, t, r.nextRunAt)}</div>
+                    <div className="routines-item-line">{describeSchedule(r.schedule, r.nextRunAt)}</div>
                     <div className="routines-item-meta">
                       <span>{targetLabel}</span>
                       <span aria-hidden>·</span>
-                      <span>{t('routines.metaNext', { when: formatRelative(r.nextRunAt) })}</span>
+                      <span>next: {formatRelative(r.nextRunAt)}</span>
                       {r.lastRun ? (
                         <>
                           <span aria-hidden>·</span>
                           <span>
-                            {t('routines.metaLast')}{' '}
-                            <StatusPill status={r.lastRun.status} t={t} />{' '}
+                            last: <StatusPill status={r.lastRun.status} />{' '}
                             {formatRelative(r.lastRun.startedAt)}
                           </span>
                         </>
                       ) : null}
                     </div>
-                    {failureReason ? (
-                      <div className="routines-item-error">{failureReason}</div>
-                    ) : null}
                   </div>
                   <div className="routines-item-actions">
                     <button
@@ -792,19 +676,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                       onClick={() => runNow(r.id)}
                       disabled={isBusy}
                     >
-                      {t('routines.runNow')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setForm(formFromRoutine(r));
-                        setEditingId(r.id);
-                        setShowForm(true);
-                      }}
-                      disabled={isBusy}
-                    >
-                      {t('routines.edit')}
+                      Run now
                     </button>
                     <button
                       type="button"
@@ -812,7 +684,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                       onClick={() => toggleEnabled(r)}
                       disabled={isBusy}
                     >
-                      {r.enabled ? t('routines.pause') : t('routines.resume')}
+                      {r.enabled ? 'Pause' : 'Resume'}
                     </button>
                     <button
                       type="button"
@@ -820,22 +692,22 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                       onClick={() => setExpandedId(isExpanded ? null : r.id)}
                       aria-expanded={isExpanded}
                     >
-                      {isExpanded ? t('routines.hideHistory') : t('routines.history')}
+                      {isExpanded ? 'Hide history' : 'History'}
                     </button>
                     <button
                       type="button"
                       className="btn btn-ghost btn-danger"
                       onClick={() => remove(r.id)}
                       disabled={isBusy}
-                      title={t('routines.deleteTitle')}
+                      title="Delete this routine"
                     >
-                      {t('routines.delete')}
+                      Delete
                     </button>
                   </div>
                 </div>
                 {isExpanded ? (
                   <div className="routines-item-history">
-                    <RunHistory routineId={r.id} refreshKey={historyTick} onClose={onClose} t={t} />
+                    <RunHistory routineId={r.id} refreshKey={historyTick} />
                   </div>
                 ) : null}
               </li>

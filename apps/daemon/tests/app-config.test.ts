@@ -16,18 +16,6 @@ import {
 import { readAppConfig, writeAppConfig } from '../src/app-config.js';
 import { isLocalSameOrigin } from '../src/origin-validation.js';
 
-// Default telemetry preference applied when an existing config has no
-// telemetry block (fresh install, pre-disclosure). See
-// `app-config.ts#applyTelemetryDefaults` and `state/config.ts#DEFAULT_CONFIG`
-// for the matching client default. Tests that previously expected an
-// empty `{}` are now updated to expect this default; tests confirming
-// "user opted out → stays opted out" assert on `metrics: false`.
-const DEFAULT_TELEMETRY = {
-  metrics: true,
-  content: true,
-  artifactManifest: false,
-} as const;
-
 describe('app-config', () => {
   let dataDir: string;
 
@@ -40,38 +28,35 @@ describe('app-config', () => {
   });
 
   describe('readAppConfig', () => {
-    it('returns default telemetry when config file does not exist', async () => {
-      expect(await readAppConfig(dataDir)).toEqual({
-        telemetry: DEFAULT_TELEMETRY,
-      });
+    it('returns {} when config file does not exist', async () => {
+      expect(await readAppConfig(dataDir)).toEqual({});
     });
 
-    it('returns parsed config from existing file (with default telemetry)', async () => {
+    it('returns parsed config from existing file', async () => {
       await writeFile(
         path.join(dataDir, 'app-config.json'),
         JSON.stringify({ onboardingCompleted: true }),
       );
       const cfg = await readAppConfig(dataDir);
       expect(cfg.onboardingCompleted).toBe(true);
-      expect(cfg.telemetry).toEqual(DEFAULT_TELEMETRY);
     });
 
-    it('returns default telemetry for corrupted JSON without crashing', async () => {
+    it('returns {} for corrupted JSON without crashing', async () => {
       await writeFile(path.join(dataDir, 'app-config.json'), '{not valid');
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({ telemetry: DEFAULT_TELEMETRY });
+      expect(cfg).toEqual({});
     });
 
-    it('returns default telemetry when file contains a JSON array', async () => {
+    it('returns {} when file contains a JSON array', async () => {
       await writeFile(path.join(dataDir, 'app-config.json'), '[1,2,3]');
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({ telemetry: DEFAULT_TELEMETRY });
+      expect(cfg).toEqual({});
     });
 
-    it('returns default telemetry when file contains a JSON primitive', async () => {
+    it('returns {} when file contains a JSON primitive', async () => {
       await writeFile(path.join(dataDir, 'app-config.json'), '"hello"');
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({ telemetry: DEFAULT_TELEMETRY });
+      expect(cfg).toEqual({});
     });
 
     it('filters out unknown keys from stored file', async () => {
@@ -80,7 +65,7 @@ describe('app-config', () => {
         JSON.stringify({ agentId: 'claude', rogue: 'value', __proto: 'x' }),
       );
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({ agentId: 'claude', telemetry: DEFAULT_TELEMETRY });
+      expect(cfg).toEqual({ agentId: 'claude' });
       expect(cfg).not.toHaveProperty('rogue');
       expect(cfg).not.toHaveProperty('__proto');
     });
@@ -96,39 +81,7 @@ describe('app-config', () => {
         }),
       );
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({ telemetry: DEFAULT_TELEMETRY });
-    });
-
-    it('preserves an explicit telemetry opt-out across reads', async () => {
-      // Regression guard: the `applyTelemetryDefaults` helper must only
-      // fill in defaults when the saved config has NO telemetry field.
-      // A user who explicitly opted out (toggled metrics off in
-      // Settings → Privacy) keeps `metrics: false`; we never silently
-      // re-enable it on read.
-      await writeFile(
-        path.join(dataDir, 'app-config.json'),
-        JSON.stringify({
-          telemetry: { metrics: false, content: false, artifactManifest: false },
-        }),
-      );
-      const cfg = await readAppConfig(dataDir);
-      expect(cfg.telemetry).toEqual({
-        metrics: false,
-        content: false,
-        artifactManifest: false,
-      });
-    });
-
-    it('preserves a partial explicit telemetry (metrics on, content off)', async () => {
-      // The user picked a non-default combo (e.g. metrics on for funnel,
-      // content off for privacy). We hand back exactly what they saved
-      // — defaults never overwrite explicit per-field choices.
-      await writeFile(
-        path.join(dataDir, 'app-config.json'),
-        JSON.stringify({ telemetry: { metrics: true, content: false } }),
-      );
-      const cfg = await readAppConfig(dataDir);
-      expect(cfg.telemetry).toEqual({ metrics: true, content: false });
+      expect(cfg).toEqual({});
     });
 
     it('preserves omitted orbit.templateSkillId from legacy stored config', async () => {
@@ -224,11 +177,7 @@ describe('app-config', () => {
         agentId: 'claude',
       });
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({
-        onboardingCompleted: true,
-        agentId: 'claude',
-        telemetry: DEFAULT_TELEMETRY,
-      });
+      expect(cfg).toEqual({ onboardingCompleted: true, agentId: 'claude' });
       expect(cfg).not.toHaveProperty('unknownKey');
     });
 
@@ -240,7 +189,7 @@ describe('app-config', () => {
         designSystemId: { id: 'bad' },
       });
       const cfg = await readAppConfig(dataDir);
-      expect(cfg).toEqual({ telemetry: DEFAULT_TELEMETRY });
+      expect(cfg).toEqual({});
     });
 
     it('merges with existing config', async () => {
@@ -310,12 +259,12 @@ describe('app-config', () => {
         agentCliEnv: {
           claude: {
             CLAUDE_CONFIG_DIR: '  ~/.claude-2  ',
-            ANTHROPIC_API_KEY: '  sk-proxy-anthropic  ',
+            ANTHROPIC_API_KEY: 'sk-should-not-persist',
           },
           codex: {
             CODEX_HOME: '~/.codex-alt',
             CODEX_BIN: '~/bin/codex-next',
-            OPENAI_API_KEY: '  sk-proxy-openai  ',
+            OPENAI_API_KEY: 'sk-should-not-persist',
           },
           gemini: {
             GEMINI_API_KEY: 'should-not-persist',
@@ -329,8 +278,8 @@ describe('app-config', () => {
       const cfg = await readAppConfig(dataDir);
 
       expect(cfg.agentCliEnv).toEqual({
-        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2', ANTHROPIC_API_KEY: 'sk-proxy-anthropic' },
-        codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next', OPENAI_API_KEY: 'sk-proxy-openai' },
+        claude: { CLAUDE_CONFIG_DIR: '~/.claude-2' },
+        codex: { CODEX_HOME: '~/.codex-alt', CODEX_BIN: '~/bin/codex-next' },
       });
     });
 
@@ -543,23 +492,14 @@ describe('app-config telemetry prefs', () => {
     expect(cfg.telemetry).toEqual({ artifactManifest: true });
   });
 
-  it('drops invalid telemetry entirely from the on-disk file (read backfills the default)', async () => {
-    // Pre-default era: a bad-shaped `telemetry` write got stripped and
-    // `readAppConfig` returned `cfg.telemetry === undefined`. After the
-    // 2026-05-22 default-on switch, the same read backfills the
-    // default — telemetry is never undefined for callers, but the
-    // user's invalid value still didn't make it to disk. The
-    // assertion now tracks "what the gate sees" (the default), since
-    // that's the actually observable behavior; the write-validation
-    // invariant the test was guarding is still in force (nothing of
-    // the bad input survives).
+  it('drops telemetry entirely when no inner key is valid', async () => {
     await writeAppConfig(dataDir, {
       onboardingCompleted: true,
       telemetry: { metrics: 'yes' } as any,
     } as any);
     const cfg = await readAppConfig(dataDir);
     expect(cfg.onboardingCompleted).toBe(true);
-    expect(cfg.telemetry).toEqual(DEFAULT_TELEMETRY);
+    expect(cfg.telemetry).toBeUndefined();
   });
 
   it('drops unknown keys nested inside telemetry', async () => {
@@ -571,26 +511,19 @@ describe('app-config telemetry prefs', () => {
     expect(cfg.telemetry).not.toHaveProperty('rogue');
   });
 
-  it('drops telemetry when value is not a plain object (read backfills default)', async () => {
+  it('drops telemetry when value is not a plain object', async () => {
     await writeAppConfig(dataDir, { telemetry: [true] } as any);
     const cfg = await readAppConfig(dataDir);
-    expect(cfg.telemetry).toEqual(DEFAULT_TELEMETRY);
+    expect(cfg.telemetry).toBeUndefined();
   });
 
-  it('clearing telemetry by sending null resets to default (read backfills)', async () => {
-    // Sending `null` for telemetry erases the on-disk field. Read
-    // path then backfills the default because the absence of a value
-    // is treated the same as a fresh install. If the user really
-    // wants to opt out, the PrivacySection writes
-    // `{ metrics: false, content: false, ... }` explicitly — that
-    // shape persists and is preserved across reads (see "preserves
-    // an explicit telemetry opt-out across reads" above).
+  it('clears telemetry when null is sent', async () => {
     await writeAppConfig(dataDir, {
       telemetry: { metrics: true, content: true },
     });
     await writeAppConfig(dataDir, { telemetry: null } as any);
     const cfg = await readAppConfig(dataDir);
-    expect(cfg.telemetry).toEqual(DEFAULT_TELEMETRY);
+    expect(cfg.telemetry).toBeUndefined();
   });
 
   it('merges telemetry without disturbing other keys', async () => {

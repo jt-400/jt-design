@@ -16,7 +16,6 @@ export interface PreviewCommentPosition {
 }
 
 export type PreviewCommentSelectionKind = 'element' | 'pod';
-export type PreviewVisualMarkKind = 'click' | 'stroke' | 'click+stroke';
 
 export interface PreviewCommentMember {
   elementId: string;

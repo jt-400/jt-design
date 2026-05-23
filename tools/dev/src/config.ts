@@ -7,7 +7,7 @@ import {
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_ENV,
   SIDECAR_SOURCES,
-} from "@open-design/sidecar-proto";
+} from "@jt-design/sidecar-proto";
 import {
   resolveAppIpcPath,
   resolveAppRuntimePath,
@@ -16,11 +16,12 @@ import {
   resolveNamespaceRoot,
   resolveSidecarBase,
   resolveSourceRuntimeRoot,
-} from "@open-design/sidecar";
+} from "@jt-design/sidecar";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ENTRY_DIR_NAME = path.basename(__dirname);
 
-export const WORKSPACE_ROOT = path.resolve(__dirname, "../../..");
+export const WORKSPACE_ROOT = path.resolve(__dirname, ENTRY_DIR_NAME === "dist" ? "../../.." : "../../..");
 
 export const ALL_APPS = [APP_KEYS.DAEMON, APP_KEYS.WEB, APP_KEYS.DESKTOP] as const;
 export const DEFAULT_START_APPS = [APP_KEYS.DAEMON, APP_KEYS.WEB, APP_KEYS.DESKTOP] as const;

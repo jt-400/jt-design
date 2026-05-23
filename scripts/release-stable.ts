@@ -41,13 +41,6 @@ type StableNightlyValidation = {
   nightlyVersion: string;
 };
 
-type ReleaseNamespaces = {
-  linux: string;
-  mac: string;
-  macIntel: string;
-  win: string;
-};
-
 function fail(message: string): never {
   console.error(`[release-stable] ${message}`);
   process.exit(1);
@@ -81,17 +74,6 @@ function compareVersions(left: [number, number, number], right: [number, number,
   }
 
   return 0;
-}
-
-function releaseNamespaces(channel: ReleaseChannel): ReleaseNamespaces {
-  const mac = channel === "nightly" ? "release-nightly" : "release-stable";
-
-  return {
-    linux: `${mac}-linux`,
-    mac,
-    macIntel: `${mac}-intel`,
-    win: `${mac}-win`,
-  };
 }
 
 function extractStableVersion(release: GitHubRelease): ParsedStableVersion | null {
@@ -319,18 +301,6 @@ async function validateStableNightlyMetadata(options: {
   requireVersionedUrlField(macZip, "url", expectedVersionUrl, `${sourceName}.platforms.mac.artifacts.zip`);
   requireVersionedUrlField(macZip, "sha256Url", expectedVersionUrl, `${sourceName}.platforms.mac.artifacts.zip`);
 
-  const macIntel = requireObjectField(platforms, "macIntel", `${sourceName}.platforms`);
-  expectBooleanField(macIntel, "enabled", true, `${sourceName}.platforms.macIntel`);
-  expectStringField(macIntel, "arch", "x64", `${sourceName}.platforms.macIntel`);
-  expectBooleanField(macIntel, "signed", true, `${sourceName}.platforms.macIntel`);
-  const macIntelArtifacts = requireObjectField(macIntel, "artifacts", `${sourceName}.platforms.macIntel`);
-  const macIntelDmg = requireObjectField(macIntelArtifacts, "dmg", `${sourceName}.platforms.macIntel.artifacts`);
-  requireVersionedUrlField(macIntelDmg, "url", expectedVersionUrl, `${sourceName}.platforms.macIntel.artifacts.dmg`);
-  requireVersionedUrlField(macIntelDmg, "sha256Url", expectedVersionUrl, `${sourceName}.platforms.macIntel.artifacts.dmg`);
-  const macIntelZip = requireObjectField(macIntelArtifacts, "zip", `${sourceName}.platforms.macIntel.artifacts`);
-  requireVersionedUrlField(macIntelZip, "url", expectedVersionUrl, `${sourceName}.platforms.macIntel.artifacts.zip`);
-  requireVersionedUrlField(macIntelZip, "sha256Url", expectedVersionUrl, `${sourceName}.platforms.macIntel.artifacts.zip`);
-
   const win = requireObjectField(platforms, "win", `${sourceName}.platforms`);
   expectBooleanField(win, "enabled", true, `${sourceName}.platforms.win`);
   expectStringField(win, "arch", "x64", `${sourceName}.platforms.win`);
@@ -450,7 +420,6 @@ function setOutput(name: string, value: string): void {
 
 const repository = process.env.GITHUB_REPOSITORY ?? fail("GITHUB_REPOSITORY is required");
 const channel = parseChannel(process.env.OPEN_DESIGN_RELEASE_CHANNEL);
-const namespaces = releaseNamespaces(channel);
 const packagedVersion = await readPackagedVersion();
 const packagedParsed = parseStableVersion(packagedVersion) ?? fail(`invalid packaged version: ${packagedVersion}`);
 const commit = process.env.GITHUB_SHA ?? "";
@@ -549,7 +518,6 @@ if (channel === "nightly") {
 console.log(`[release-stable] channel: ${channel}`);
 console.log(`[release-stable] base version: ${packagedVersion}`);
 console.log(`[release-stable] release version: ${releaseVersion}`);
-console.log(`[release-stable] namespace: ${namespaces.mac}`);
 if (channel === "stable") console.log(`[release-stable] version tag: ${versionTag}`);
 console.log(`[release-stable] state source: ${stateSource}`);
 if (latestStable != null) console.log(`[release-stable] previous stable: ${latestStable.value}`);
@@ -559,9 +527,6 @@ setOutput("branch", branch);
 setOutput("channel", channel);
 setOutput("commit", commit);
 setOutput("github_release_enabled", channel === "stable" ? "true" : "false");
-setOutput("linux_namespace", namespaces.linux);
-setOutput("mac_intel_namespace", namespaces.macIntel);
-setOutput("namespace", namespaces.mac);
 setOutput("nightly_number", nightlyNumber);
 setOutput("previous_stable", latestStable?.value ?? "");
 setOutput("release_name", releaseName);
@@ -569,4 +534,3 @@ setOutput("release_version", releaseVersion);
 setOutput("stable_version", packagedVersion);
 setOutput("state_source", stateSource);
 setOutput("version_tag", channel === "stable" ? versionTag : "");
-setOutput("win_namespace", namespaces.win);

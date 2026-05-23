@@ -7,12 +7,6 @@ export const FR_SKILL_COPY: Record<string, { description?: string; examplePrompt
     description:
       'Génération audio pour jingles, musiques de fond, voix off et effets sonores. Les demandes de musique partent vers Suno V5 / Udio / Lyria, la voix vers MiniMax TTS / FishAudio / ElevenLabs V3, et les SFX vers ElevenLabs SFX ou AudioCraft. La sortie est un fichier MP3/WAV dans le dossier projet.',
   },
-  'agent-browser': {
-    examplePrompt:
-      'Vérifiez la preview locale Open Design avec agent-browser : démarrez ou connectez Chrome CDP, ouvrez http://127.0.0.1:17573/, puis rapportez le titre, l’URL, le texte visible et enregistrez un screenshot.',
-    description:
-      'Automatisation navigateur pour valider la preview locale Open Design. Se connecte à un endpoint Chrome CDP vérifié, lit l’état rendu de la page, peut cliquer/saisir si nécessaire et enregistre un screenshot.',
-  },
   'blog-post': {
     examplePrompt:
       'Un article long-form / blog post — masthead, placeholder d’image hero, corps d’article avec figures et pull quotes, ligne auteur, articles associés.',
@@ -40,11 +34,11 @@ export const FR_SKILL_COPY: Record<string, { description?: string; examplePrompt
   },
   'open-design-landing': {
     examplePrompt:
-      'Concevez la landing page marketing Open Design dans le style Atelier Zero / Monocle — canvas papier chaud, collage surréaliste plâtre + architecture, grande typographie display serif italique mixée, chiffres romains comme marqueurs de sections et un seul accent corail.',
+      'Concevez la landing page marketing JT Design dans le style Atelier Zero / Monocle — canvas papier chaud, collage surréaliste plâtre + architecture, grande typographie display serif italique mixée, chiffres romains comme marqueurs de sections et un seul accent corail.',
   },
   'open-design-landing-deck': {
     examplePrompt:
-      'Créez le pitch deck Open Design dans le style Atelier Zero — cover avec hero plate, séparateurs de section en chiffres romains, slide stats (31 Skills · 72 systèmes · 12 CLIs), citation client, CTA et end-card mega italic-serif. Pagination horizontal-swipe comme un magazine imprimé.',
+      'Créez le pitch deck JT Design dans le style Atelier Zero — cover avec hero plate, séparateurs de section en chiffres romains, slide stats (31 Skills · 72 systèmes · 12 CLIs), citation client, CTA et end-card mega italic-serif. Pagination horizontal-swipe comme un magazine imprimé.',
     description:
       'Crée un slide deck single-file dans le style Atelier Zero (papier chaud, spans accent en serif italique, points finaux corail, plaques de collage surréalistes). Pagination magazine horizontale avec navigation par flèches et espace, HUD live avec compteur de slides et progress bar ; partage le stylesheet et la bibliothèque d’images à 16 slots avec le Skill frère `open-design-landing`.',
   },
@@ -54,11 +48,7 @@ export const FR_SKILL_COPY: Record<string, { description?: string; examplePrompt
   },
   'eng-runbook': {
     examplePrompt:
-      "Rédigez un runbook pour notre service d'auth — alertes, dashboards, procédures standard, rotation on-call.",
-  },
-  'faq-page': {
-    examplePrompt:
-      'Une page FAQ avec sections accordéon pliables, recherche et filtrage par catégorie.',
+      'Rédigez un runbook pour notre service d’auth — alertes, dashboards, procédures standard, rotation on-call.',
   },
   'finance-report': {
     examplePrompt:
@@ -297,7 +287,6 @@ export const FR_DESIGN_SYSTEM_SUMMARIES: Record<string, string> = {
   wise: 'Transfert d’argent. Accent vert lumineux, amical et clair.',
   'x-ai': 'Lab IA d’Elon Musk. Look monochrome strict, minimalisme futuriste.',
   xiaohongshu: 'Plateforme social lifestyle UGC. Rouge de marque singulier, radius généreux, content-first.',
-  wechat: 'Mini programmes WeChat. Vert frais (#07C160), PingFang SC, UI à bulle de chat, barre d’onglets.',
   zapier: 'Plateforme d’automatisation. Orange chaud, amical, porté par l’illustration.',
 };
 
@@ -317,9 +306,7 @@ export const FR_DESIGN_SYSTEM_CATEGORIES: Record<string, string> = {
   'Fintech & Crypto': 'Fintech & crypto',
   'E-Commerce & Retail': 'E-commerce & retail',
   'Media & Consumer': 'Médias & grand public',
-  'Social & Messaging': 'Réseaux sociaux & messageries',
   Automotive: 'Automobile',
-  Product: 'Produit',
   'Editorial & Print': 'Éditorial & print',
   'Editorial · Studio': 'Éditorial · Studio',
   'Retro & Nostalgic': 'Rétro & nostalgique',
@@ -327,6 +314,152 @@ export const FR_DESIGN_SYSTEM_CATEGORIES: Record<string, string> = {
   'Editorial / Personal / Publication': 'Éditorial / Personnel / Publication',
   Uncategorized: 'Non catégorisé',
 };
+
+export const FR_SKILL_IDS_WITH_EN_FALLBACK = [
+  'clinical-case-report',
+  'dcf-valuation',
+  'editorial-burgundy-principles-template',
+  'flowai-live-dashboard-template',
+  'html-ppt-taste-brutalist',
+  'html-ppt-taste-editorial',
+  // Vendored upstream English-language Zara templates (zarazhangrui/beautiful-html-templates).
+  // Localized copy is not maintained; fall back to the upstream English description.
+  'html-ppt-zhangzara-8-bit-orbit',
+  'html-ppt-zhangzara-biennale-yellow',
+  'html-ppt-zhangzara-block-frame',
+  'html-ppt-zhangzara-blue-professional',
+  'html-ppt-zhangzara-bold-poster',
+  'html-ppt-zhangzara-broadside',
+  'html-ppt-zhangzara-capsule',
+  'html-ppt-zhangzara-cartesian',
+  'html-ppt-zhangzara-cobalt-grid',
+  'html-ppt-zhangzara-coral',
+  'html-ppt-zhangzara-creative-mode',
+  'html-ppt-zhangzara-daisy-days',
+  'html-ppt-zhangzara-editorial-tri-tone',
+  'html-ppt-zhangzara-grove',
+  'html-ppt-zhangzara-long-table',
+  'html-ppt-zhangzara-mat',
+  'html-ppt-zhangzara-monochrome',
+  'html-ppt-zhangzara-neo-grid-bold',
+  'html-ppt-zhangzara-peoples-platform',
+  'html-ppt-zhangzara-pin-and-paper',
+  'html-ppt-zhangzara-pink-script',
+  'html-ppt-zhangzara-playful',
+  'html-ppt-zhangzara-raw-grid',
+  'html-ppt-zhangzara-retro-windows',
+  'html-ppt-zhangzara-retro-zine',
+  'html-ppt-zhangzara-sakura-chroma',
+  'html-ppt-zhangzara-scatterbrain',
+  'html-ppt-zhangzara-signal',
+  'html-ppt-zhangzara-soft-editorial',
+  'html-ppt-zhangzara-stencil-tablet',
+  'html-ppt-zhangzara-studio',
+  'html-ppt-zhangzara-vellum',
+  // IB pitch-book skill (#888): English-only skill copy for now.
+  'ib-pitch-book',
+  'last30days',
+  'live-dashboard',
+  'orbit-general',
+  'orbit-github',
+  'orbit-gmail',
+  'orbit-linear',
+  'orbit-notion',
+  'release-notes-one-pager',
+  // TODO: add localized copy for social-media-dashboard (introduced in #678).
+  // Fallback for now so the localized-content coverage test passes.
+  'social-media-dashboard',
+  'social-media-matrix-tracker-template',
+  '8-bit-orbit-video-template',
+  'digits-fintech-swiss-template',
+  'field-notes-editorial-template',
+  'html-ppt-retro-quarterly-review',
+  'swiss-user-research-video-template',
+  'web-prototype-taste-brutalist',
+  'web-prototype-taste-editorial',
+  'web-prototype-taste-soft',
+  'waitlist-page',
+  'x-research',
+  'trading-analysis-dashboard-template',
+  'swiss-creative-mode-template',
+  'github-dashboard',
+  'after-hours-editorial-template',
+] as const;
+
+export const FR_DESIGN_SYSTEM_IDS_WITH_EN_FALLBACK = [
+  'agentic',
+  'ant',
+  'application',
+  'arc',
+  'artistic',
+  'bento',
+  'bmw-m',
+  'bold',
+  'brutalism',
+  'cafe',
+  'canva',
+  'cisco',
+  'claymorphism',
+  'clean',
+  'colorful',
+  'contemporary',
+  'corporate',
+  'cosmic',
+  'creative',
+  'dashboard',
+  'discord',
+  'dithered',
+  'doodle',
+  'dramatic',
+  'duolingo',
+  'editorial',
+  'elegant',
+  'energetic',
+  'enterprise',
+  'expressive',
+  'fantasy',
+  'flat',
+  'friendly',
+  'futuristic',
+  'github',
+  'glassmorphism',
+  'gradient',
+  'huggingface',
+  'hud',
+  'levels',
+  'lingo',
+  'luxury',
+  'material',
+  'minimal',
+  'mission-control',
+  'modern',
+  'mono',
+  'neobrutalism',
+  'neon',
+  'neumorphism',
+  'openai',
+  'pacman',
+  'paper',
+  'perspective',
+  'premium',
+  'professional',
+  'publication',
+  'refined',
+  'retro',
+  'shadcn',
+  'simple',
+  'skeumorphism',
+  'slack',
+  'sleek',
+  'spacious',
+  'storytelling',
+  'totality-festival',
+  'tetris',
+  'urdu',
+  'vibrant',
+  'vintage',
+  'webex',
+] as const;
 
 export const FR_PROMPT_TEMPLATE_CATEGORIES: Record<string, string> = {
   Infographic: 'Infographie',
@@ -350,8 +483,9 @@ export const FR_PROMPT_TEMPLATE_CATEGORIES: Record<string, string> = {
   'Short Form': 'Short form',
   Travel: 'Voyage',
   'Live Artifact': 'Live artifact',
-  'VFX / HTML-in-Canvas': 'VFX / HTML-in-Canvas',
 };
+
+export const FR_PROMPT_TEMPLATE_IDS_WITH_EN_FALLBACK = ['notion-team-dashboard-live-artifact'] as const;
 
 export const FR_PROMPT_TEMPLATE_TAGS: Record<string, string> = {
   '3d': '3D',
@@ -452,25 +586,6 @@ export const FR_PROMPT_TEMPLATE_TAGS: Record<string, string> = {
   'website-to-video': 'website-to-video',
   wuxia: 'wuxia',
   zhaoyun: 'Zhaoyun',
-  dashboard: 'dashboard',
-  data: 'data',
-  destruction: 'destruction',
-  displacement: 'displacement',
-  hero: 'hero',
-  'html-in-canvas': 'HTML-in-Canvas',
-  iphone: 'iPhone',
-  keynote: 'keynote',
-  liquid: 'liquide',
-  'liquid-glass': 'liquid glass',
-  macbook: 'MacBook',
-  magnetic: 'magnétique',
-  particles: 'particules',
-  portal: 'portail',
-  'product-demo': 'démo produit',
-  shader: 'shader',
-  shatter: 'shatter',
-  text: 'texte',
-  webgl: 'WebGL',
 };
 
 export const FR_PROMPT_TEMPLATE_COPY: Record<string, Partial<Pick<PromptTemplateSummary, 'summary' | 'title'>>> = {
@@ -788,11 +903,6 @@ export const FR_PROMPT_TEMPLATE_COPY: Record<string, Partial<Pick<PromptTemplate
     title: 'HyperFrames : money counter hype $0 → $10K (9:16)',
     summary:
       'Clip hype vertical HyperFrames 1080×1920 de 6 secondes — compteur style Apple de $0 à $10,000 avec flash vert, particules money-burst, icône cash stack et kicker headline. Bâti sur le bloc HyperFrames `apple-money-count`.',
-  },
-  'weread-year-in-review-video-template': {
-    title: 'Template vidéo WeRead Year in Review',
-    summary:
-      'Template vidéo HyperFrames 9:16 pour rapports annuels de lecture façon WeRead : papier chaud, typographie chinoise éditoriale, transitions de pages, statistiques de lecture, traces de notes, mots-clés d’intérêt et carte finale de persona lecteur.',
   },
   'hyperframes-product-reveal-minimal': {
     title: 'HyperFrames : product reveal minimal de 5 secondes',

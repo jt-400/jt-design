@@ -266,7 +266,7 @@ if (enabled("ENABLE_MAC_INTEL")) {
     arch: "x64",
     enabled: true,
     feed: null,
-    signed: env.MAC_INTEL_SIGNED === "true",
+    signed: false,
     artifacts: {
       dmg: fileEntry("mac-intel", env.MAC_INTEL_DMG, "application/x-apple-diskimage"),
       zip: fileEntry("mac-intel", env.MAC_INTEL_ZIP, "application/zip"),
@@ -316,15 +316,6 @@ if (env.RELEASE_CHANNEL === "beta") {
     baseVersion: env.BASE_VERSION,
     betaNumber: Number(env.RELEASE_VERSION.split("-beta.")[1]),
     betaVersion: env.RELEASE_VERSION,
-    ...commonMetadata,
-  };
-} else if (env.RELEASE_CHANNEL === "preview") {
-  metadata = {
-    assetVersionSuffix: env.ASSET_VERSION_SUFFIX ?? "",
-    baseVersion: env.BASE_VERSION,
-    previewNumber: Number(env.RELEASE_VERSION.split("-preview.")[1]),
-    previewVersion: env.RELEASE_VERSION,
-    releaseVersion: env.RELEASE_VERSION,
     ...commonMetadata,
   };
 } else {
